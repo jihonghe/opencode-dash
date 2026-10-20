@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "local.opencode-quota",
+  "name": "OpenCode Quota",
+  "version": "0.1.0",
+  "author": "jihonghe",
+  "license": "MIT",
+  "description": "OpenCode subscription quota in the Omarchy bar: remaining percentages, reset countdowns, runway and per-model usage.",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "BarWidget.qml" },
+  "barWidget": {
+    "displayName": "OpenCode Quota",
+    "description": "OpenCode Go / Go Plus usage and remaining quota.",
+    "category": "AI",
+    "aliases": ["opencode", "quota", "usage", "go"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 300,
+      "barWindows": "worst",
+      "percentMode": "remaining",
+      "warnRemaining": 20,
+      "critRemaining": 10,
+      "notifyEnabled": true,
+      "notifyReset": false,
+      "showModelDetail": true,
+      "renewOverride": "",
+      "planLabel": "OpenCode Go"
+    },
+    "schema": [
+      { "key": "refreshIntervalSec", "type": "integer", "label": "Refresh interval (seconds)", "min": 60, "max": 3600, "step": 60, "defaultValue": 300 },
+      { "key": "barWindows", "type": "enum", "label": "Bar display", "options": ["worst", "all", "month"], "defaultValue": "worst" },
+      { "key": "percentMode", "type": "enum", "label": "Percent meaning", "options": ["remaining", "used"], "defaultValue": "remaining" },
+      { "key": "warnRemaining", "type": "integer", "label": "Warn below remaining %", "min": 1, "max": 99, "defaultValue": 20 },
+      { "key": "critRemaining", "type": "integer", "label": "Critical below remaining %", "min": 1, "max": 99, "defaultValue": 10 },
+      { "key": "notifyEnabled", "type": "boolean", "label": "Notify on thresholds", "defaultValue": true },
+      { "key": "notifyReset", "type": "boolean", "label": "Notify on reset", "defaultValue": false },
+      { "key": "showModelDetail", "type": "boolean", "label": "Show per-model usage", "defaultValue": true },
+      { "key": "renewOverride", "type": "string", "label": "Manual renew time (ISO)", "defaultValue": "" },
+      { "key": "planLabel", "type": "string", "label": "Plan label", "defaultValue": "OpenCode Go" }
+    ]
+  }
+}
