@@ -105,6 +105,12 @@ Item {
     check("eta now", Model.etaLabel(15, 20, 1, 86400) === "now")
     check("eta after reset", Model.etaLabel(50, 20, 1, 3600) === "after reset")
     check("eta no rate", Model.etaLabel(50, 20, 0, 3600) === "")
+    check("runway level normal", Model.runwayLevel(74, 7200, 3600, 20, 10) === "normal")
+    check("runway level short", Model.runwayLevel(74, 1800, 3600, 20, 10) === "warn")
+    check("runway level warn", Model.runwayLevel(15, 7200, 3600, 20, 10) === "warn")
+    check("runway level crit", Model.runwayLevel(5, 1800, 3600, 20, 10) === "crit")
+    check("runway level empty", Model.runwayLevel(0, 0, 3600, 20, 10) === "crit")
+    check("runway level none", Model.runwayLevel(74, null, 3600, 20, 10) === "none")
 
     var config = { layout: { right: [{ id: "jihonghe.opencode-quota", barWindows: "all" }, { id: "omarchy.clock" }] } }
     var saved = Model.savedBarSettings(config, "jihonghe.opencode-quota", { section: "right", index: 0 })

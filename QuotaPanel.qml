@@ -239,6 +239,7 @@ Panel {
               foreground: root.foreground
               warnColor: root.warnColor
               critColor: root.critColor
+              okColor: root.okColor
               fontFamily: root.fontFamily
             }
           }

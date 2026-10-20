@@ -274,6 +274,20 @@ function etaLabel(remaining, threshold, ratePerHour, resetInSec) {
   return "~" + fmtDuration(seconds)
 }
 
+function runwayLevel(remaining, seconds, resetInSec, warn, crit) {
+  var rem = remaining === null || remaining === undefined ? null : Number(remaining)
+  var sec = seconds === null || seconds === undefined ? null : Number(seconds)
+  if (rem !== null && isFinite(rem)) {
+    if (rem <= Number(crit)) return "crit"
+    if (rem <= Number(warn)) return "warn"
+  }
+  if (sec === null || !isFinite(sec)) return "none"
+  if (sec <= 0) return "crit"
+  var reset = resetInSec === null || resetInSec === undefined ? null : Number(resetInSec)
+  if (reset !== null && isFinite(reset) && sec < reset - 60) return "warn"
+  return "normal"
+}
+
 function withPending(saved, pending) {
   if (!saved) return null
   var out = {}
@@ -351,6 +365,7 @@ if (typeof module !== "undefined" && module.exports) {
     burnText: burnText,
     runwayLabel: runwayLabel,
     etaLabel: etaLabel,
+    runwayLevel: runwayLevel,
     fmtReset: fmtReset,
     fmtUpdated: fmtUpdated,
     stateMessage: stateMessage,

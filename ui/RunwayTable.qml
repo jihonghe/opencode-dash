@@ -13,6 +13,7 @@ Column {
   property color foreground: Commons.Color.foreground
   property color warnColor: "#e8a33d"
   property color critColor: Commons.Color.urgent
+  property color okColor: "#9ece6a"
   property string fontFamily: Style.font.family
 
   readonly property var cfg: Model.settingsWithDefaults(settings)
@@ -89,6 +90,16 @@ Column {
   function etaFor(name, threshold) {
     var window = windows[name] || ({})
     return Model.etaLabel(window.remaining, threshold, rate(name), resetSeconds(window))
+  }
+
+  function runwayColor(name) {
+    var window = windows[name] || ({})
+    var level = Model.runwayLevel(window.remaining, runwaySeconds(name),
+      resetSeconds(window), cfg.warnRemaining, cfg.critRemaining)
+    if (level === "crit") return critColor
+    if (level === "warn") return warnColor
+    if (level === "normal") return okColor
+    return dim
   }
 
   function etaColor(name, threshold, level) {
@@ -189,7 +200,7 @@ Column {
         Text {
           width: root.runwayWidth
           text: root.runwayFor(modelData)
-          color: root.runwayFor(modelData) === "Lasts until reset" ? root.foreground : root.dim
+          color: root.runwayColor(modelData)
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall
           elide: Text.ElideRight

@@ -40,7 +40,7 @@ PopupWindow {
   }
 
   color: "transparent"
-  implicitWidth: Style.space(424)
+  implicitWidth: Style.space(428)
   implicitHeight: bubble.implicitHeight
 
   property bool revealed: false
@@ -85,7 +85,38 @@ PopupWindow {
   function runwayText(name) {
     if (!report || !report.runway || !report.runway[name]) return ""
     var window = root.windows[name] || ({})
-    return Model.runwayLabel(report.runway[name].seconds, resetSeconds(window), window.remaining)
+    var label = Model.runwayLabel(report.runway[name].seconds, resetSeconds(window), window.remaining)
+    if (label === "") return ""
+    var burn = Model.burnText(report.runway[name].ratePerHour, name)
+    return burn ? label + " \u00b7 " + burn : label
+  }
+
+  function runwayColor(name) {
+    var window = root.windows[name] || ({})
+    var entry = report && report.runway ? report.runway[name] : null
+    var level = Model.runwayLevel(window.remaining, entry ? entry.seconds : null,
+      resetSeconds(window), root.cfg.warnRemaining, root.cfg.critRemaining)
+    if (level === "crit") return critColor
+    if (level === "warn") return warnColor
+    if (level === "normal") return okColor
+    return dim
+  }
+
+  readonly property string sampleSpan: {
+    if (!report || !report.samples || report.samples.length === 0) return ""
+    var first = new Date(report.samples[0].t).getTime()
+    var last = new Date(report.samples[report.samples.length - 1].t).getTime()
+    if (!isFinite(first) || !isFinite(last)) return ""
+    return Model.fmtDuration(Math.max(0, (last - first) / 1000))
+  }
+
+  readonly property string footerText: {
+    var span = root.sampleSpan
+    if (span !== "") {
+      return "Official API \u00b7 estimates from " + span + " of samples"
+        + (root.report && root.report.stale ? " \u00b7 cached" : "")
+    }
+    return "Official API \u00b7 all clients"
   }
 
   anchor {
@@ -201,7 +232,7 @@ PopupWindow {
 
         Row {
           width: parent.width
-          spacing: Style.space(8)
+          spacing: Style.space(6)
 
           Text {
             width: Style.space(34)
@@ -213,7 +244,7 @@ PopupWindow {
             textFormat: Text.PlainText
           }
           Text {
-            width: Style.space(56)
+            width: Style.space(50)
             text: root.cfg.percentMode === "used" ? "Used" : "Left"
             color: root.dim
             font.family: root.fontFamily
@@ -223,8 +254,8 @@ PopupWindow {
             textFormat: Text.PlainText
           }
           Text {
-            width: parent.width - Style.space(34) - Style.space(56)
-              - (root.showRunway ? Style.space(90) + 3 * Style.space(8) : 2 * Style.space(8))
+            width: parent.width - Style.space(34) - Style.space(50)
+              - (root.showRunway ? Style.space(155) + 3 * Style.space(6) : 2 * Style.space(6))
             text: "Resets"
             color: root.dim
             font.family: root.fontFamily
@@ -234,7 +265,7 @@ PopupWindow {
           }
           Text {
             visible: root.showRunway
-            width: Style.space(90)
+            width: Style.space(155)
             text: "Runway"
             color: root.dim
             font.family: root.fontFamily
@@ -251,7 +282,7 @@ PopupWindow {
           delegate: Row {
             required property string modelData
             width: parent.width
-            spacing: Style.space(8)
+            spacing: Style.space(6)
 
             readonly property var win: root.windows[modelData] ? root.windows[modelData] : ({})
             readonly property bool avail: Model.isAvailable(win)
@@ -266,7 +297,7 @@ PopupWindow {
               textFormat: Text.PlainText
             }
             Text {
-              width: Style.space(56)
+              width: Style.space(50)
               text: parent.avail
                 ? Model.percentText(parent.win, root.cfg.percentMode) + "%"
                   + (Number(parent.win.remaining) <= root.cfg.critRemaining ? "!" : "")
@@ -279,10 +310,10 @@ PopupWindow {
               textFormat: Text.PlainText
             }
             Text {
-              width: parent.width - Style.space(34) - Style.space(56)
-                - (root.showRunway ? Style.space(90) + 3 * Style.space(8) : 2 * Style.space(8))
+              width: parent.width - Style.space(34) - Style.space(50)
+                - (root.showRunway ? Style.space(155) + 3 * Style.space(6) : 2 * Style.space(6))
               text: parent.avail
-                ? "resets " + Model.fmtReset(modelData, parent.win.resetsAt)
+                ? Model.fmtReset(modelData, parent.win.resetsAt)
                   + " (" + Model.fmtDuration(root.resetSeconds(parent.win)) + ")"
                 : "no data"
               color: root.dim
@@ -293,9 +324,9 @@ PopupWindow {
             }
             Text {
               visible: root.showRunway
-              width: Style.space(90)
+              width: Style.space(155)
               text: root.runwayText(modelData)
-              color: root.dim
+              color: root.runwayColor(modelData)
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
               horizontalAlignment: Text.AlignRight
@@ -316,7 +347,7 @@ PopupWindow {
       }
 
       Text {
-        text: "Official API \u00b7 all clients"
+        text: root.footerText
         color: root.dim
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption

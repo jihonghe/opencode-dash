@@ -99,6 +99,18 @@ from samples the plugin records each time it refreshes:
   enough new samples accumulate. The panel hides the whole table when no window
   has a usable estimate.
 - The estimates use official readings, so they cover every client.
+- Runway colors:
+  - **Green**: remaining is healthy and the current burn lasts until reset.
+  - **Amber**: remaining is at or below the warn threshold, or the current
+    burn is projected to exhaust the window before reset.
+  - **Red**: remaining is at or below the critical threshold, or the window is
+    empty.
+- The percentage color reflects **current remaining**; the Runway color
+  reflects the **forecast**. They can differ: a green percentage with an amber
+  runway means there is still quota, but the current burn will use it before
+  the window resets.
+- In the tooltip, `Resets` shows only the time and relative countdown; the
+  `Runway` cell also shows the burn rate, and the footer shows the sample span.
 
 ### Data sources and privacy
 
@@ -259,6 +271,14 @@ omarchy plugin remove jihonghe.opencode-quota
 - 如果用量平稳或窗口刚重置，该窗口暂时没有估算；所有窗口都没有可用估算时，
   整张表隐藏。
 - 估算来自官方读数，因此同样覆盖所有客户端。
+- Runway 颜色：
+  - **绿色**：剩余健康，且按当前速度能撑到重置。
+  - **amber**：剩余已到/低于警告阈值，或按当前速度会在重置前耗尽。
+  - **红色**：剩余已到/低于严重阈值，或窗口已经为空。
+- 百分比颜色表达**当前剩余**，Runway 颜色表达**预测**。两者可以不同：绿色百分比 +
+  amber runway 表示“还剩不少，但当前速度会在重置前用完”。
+- Tooltip 的 `Resets` 列只显示时间和相对倒计时；`Runway` 单元格附带 burn rate，
+  底部显示采样跨度。
 
 ### 数据源与隐私
 
