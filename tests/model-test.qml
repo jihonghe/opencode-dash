@@ -103,10 +103,10 @@ Item {
     check("trend cycle", Model.trendDaily(report.daily, "cycle", now).length === 3)
     check("trend samples 7d", Model.trendSamples(report.samples, "7d", now).length === 1)
 
-    var config = { layout: { right: [{ id: "local.opencode-quota", barWindows: "all" }, { id: "omarchy.clock" }] } }
-    var saved = Model.savedBarSettings(config, "local.opencode-quota", { section: "right", index: 0 })
+    var config = { layout: { right: [{ id: "jihonghe.opencode-quota", barWindows: "all" }, { id: "omarchy.clock" }] } }
+    var saved = Model.savedBarSettings(config, "jihonghe.opencode-quota", { section: "right", index: 0 })
     check("saved settings", saved && saved.barWindows === "all")
-    check("saved by id", Model.savedBarSettings(config, "local.opencode-quota", null).barWindows === "all")
+    check("saved by id", Model.savedBarSettings(config, "jihonghe.opencode-quota", null).barWindows === "all")
 
     var pending = { barWindows: { value: "month", at: 1000 } }
     check("with pending", Model.withPending({ barWindows: "all" }, pending).barWindows === "month")
