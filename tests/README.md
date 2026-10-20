@@ -38,7 +38,9 @@ Available fixtures:
 - `report-stale.json` — cached readings, runway values, trend data.
 - `report-no-key.json` — signed-out state with local model usage.
 - `report-auth-expired.json` — expired credentials.
-- `report-not-ready.json` — fewer than 3 samples / no runway; trend and runway
+- `report-not-ready.json` — fewer than 3 samples / no runway; the Runway table
   must be hidden and the remaining layout must fill the panel/tooltip.
+- `report-idle.json` — one window has zero burn; it must show `0.0%/h`,
+  `Lasts until reset`, and `after reset` instead of blank cells.
 
 Reload the shell config or restart the shell after changing the fixture.

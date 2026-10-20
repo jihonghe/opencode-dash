@@ -185,6 +185,7 @@ class RunwayTests(unittest.TestCase):
             samples.append({"t": quota.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "rolling": value, "weekly": None, "monthly": None})
         runway = quota.compute_runway(samples, windows, NOW)
         self.assertEqual(runway["rolling"]["seconds"], 36000)
+        self.assertEqual(runway["rolling"]["reason"], "ok")
         self.assertIsNone(runway["weekly"]["seconds"])
 
     def test_runway_needs_enough_samples(self):
@@ -193,7 +194,9 @@ class RunwayTests(unittest.TestCase):
             {"t": quota.iso_z(NOW - dt.timedelta(hours=2)), "_dt": NOW - dt.timedelta(hours=2), "rolling": 10},
             {"t": quota.iso_z(NOW), "_dt": NOW, "rolling": 20},
         ]
-        self.assertIsNone(quota.compute_runway(samples, windows, NOW)["rolling"]["seconds"])
+        result = quota.compute_runway(samples, windows, NOW)["rolling"]
+        self.assertIsNone(result["seconds"])
+        self.assertEqual(result["reason"], "insufficient")
 
     def test_runway_restarts_after_reset(self):
         windows = {"rolling": {"available": True, "remaining": 50, "resetInSec": 86400}}
@@ -202,6 +205,20 @@ class RunwayTests(unittest.TestCase):
             samples.append({"t": quota.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "rolling": value})
         runway = quota.compute_runway(samples, windows, NOW)
         self.assertEqual(runway["rolling"]["seconds"], 36000)
+
+    def test_runway_flat_is_idle(self):
+        windows = {"rolling": {"available": True, "remaining": 100, "resetInSec": 86400}}
+        samples = []
+        for hours in (2, 1, 0):
+            samples.append({
+                "t": quota.iso_z(NOW - dt.timedelta(hours=hours)),
+                "_dt": NOW - dt.timedelta(hours=hours),
+                "rolling": 0,
+            })
+        result = quota.compute_runway(samples, windows, NOW)["rolling"]
+        self.assertIsNone(result["seconds"])
+        self.assertEqual(result["ratePerHour"], 0.0)
+        self.assertEqual(result["reason"], "flat")
 
     def test_sample_trim(self):
         samples = [

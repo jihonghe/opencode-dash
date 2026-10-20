@@ -241,13 +241,19 @@ function stateMessage(report) {
 }
 
 function burnText(ratePerHour, windowName) {
+  if (ratePerHour === null || ratePerHour === undefined) return ""
   var rate = Number(ratePerHour)
-  if (!isFinite(rate) || rate <= 0) return ""
+  if (!isFinite(rate) || rate < 0) return ""
   if (windowName === "rolling") return rate.toFixed(1) + "%/h"
   return (rate * 24).toFixed(1) + "%/day"
 }
 
-function runwayLabel(seconds, resetInSec, remaining) {
+function runwayLabel(seconds, resetInSec, remaining, reason) {
+  if (reason === "flat") {
+    if (remaining !== null && remaining !== undefined && Number(remaining) <= 0) return "Empty"
+    if (resetInSec !== null && resetInSec !== undefined && Number(resetInSec) > 0) return "Lasts until reset"
+    return "Idle"
+  }
   if (seconds === null || seconds === undefined) return ""
   var value = Number(seconds)
   if (!isFinite(value)) return ""
@@ -259,9 +265,16 @@ function runwayLabel(seconds, resetInSec, remaining) {
   return "~" + fmtDuration(value)
 }
 
-function etaLabel(remaining, threshold, ratePerHour, resetInSec) {
-  if (remaining === null || remaining === undefined
-      || ratePerHour === null || ratePerHour === undefined) return ""
+function etaLabel(remaining, threshold, ratePerHour, resetInSec, reason) {
+  if (remaining === null || remaining === undefined) return ""
+  if (reason === "flat") {
+    var flatRem = Number(remaining)
+    if (!isFinite(flatRem)) return ""
+    if (flatRem <= Number(threshold)) return "now"
+    if (resetInSec !== null && resetInSec !== undefined && Number(resetInSec) > 0) return "after reset"
+    return ""
+  }
+  if (ratePerHour === null || ratePerHour === undefined) return ""
   var rem = Number(remaining)
   var rate = Number(ratePerHour)
   if (!isFinite(rem) || !isFinite(rate) || rate <= 0) return ""
@@ -274,13 +287,14 @@ function etaLabel(remaining, threshold, ratePerHour, resetInSec) {
   return "~" + fmtDuration(seconds)
 }
 
-function runwayLevel(remaining, seconds, resetInSec, warn, crit) {
+function runwayLevel(remaining, seconds, resetInSec, warn, crit, reason) {
   var rem = remaining === null || remaining === undefined ? null : Number(remaining)
   var sec = seconds === null || seconds === undefined ? null : Number(seconds)
   if (rem !== null && isFinite(rem)) {
     if (rem <= Number(crit)) return "crit"
     if (rem <= Number(warn)) return "warn"
   }
+  if (reason === "flat") return rem === null ? "none" : "normal"
   if (sec === null || !isFinite(sec)) return "none"
   if (sec <= 0) return "crit"
   var reset = resetInSec === null || resetInSec === undefined ? null : Number(resetInSec)

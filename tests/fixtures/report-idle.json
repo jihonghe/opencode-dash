@@ -1,0 +1,65 @@
+{
+  "state": "ok",
+  "stale": false,
+  "updatedAt": "2026-10-21T05:30:00+08:00",
+  "windows": {
+    "rolling": {
+      "available": true,
+      "percent": 0,
+      "remaining": 100,
+      "resetsAt": "2026-10-20T22:30:00Z",
+      "resetInSec": 3600
+    },
+    "weekly": {
+      "available": true,
+      "percent": 24,
+      "remaining": 76,
+      "resetsAt": "2026-10-26T00:00:00Z",
+      "resetInSec": 400000
+    },
+    "monthly": {
+      "available": true,
+      "percent": 15,
+      "remaining": 85,
+      "resetsAt": "2026-11-17T14:35:30Z",
+      "resetInSec": 2400000
+    }
+  },
+  "runway": {
+    "rolling": {
+      "seconds": null,
+      "ratePerHour": 0.0,
+      "reason": "flat"
+    },
+    "weekly": {
+      "seconds": 280000,
+      "ratePerHour": 0.97,
+      "reason": "ok"
+    },
+    "monthly": {
+      "seconds": 650000,
+      "ratePerHour": 0.46,
+      "reason": "ok"
+    }
+  },
+  "samples": [
+    {
+      "t": "2026-10-21T02:00:00Z",
+      "rolling": 0,
+      "weekly": 20,
+      "monthly": 13
+    },
+    {
+      "t": "2026-10-21T03:00:00Z",
+      "rolling": 0,
+      "weekly": 21,
+      "monthly": 14
+    },
+    {
+      "t": "2026-10-21T04:00:00Z",
+      "rolling": 0,
+      "weekly": 24,
+      "monthly": 15
+    }
+  ]
+}

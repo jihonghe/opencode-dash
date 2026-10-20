@@ -34,7 +34,8 @@ PopupWindow {
     var names = ["rolling", "weekly", "monthly"]
     for (var i = 0; i < names.length; i++) {
       var entry = report.runway[names[i]]
-      if (entry && entry.seconds !== null && entry.seconds !== undefined) return true
+      if (entry && ((entry.seconds !== null && entry.seconds !== undefined)
+          || entry.reason === "flat")) return true
     }
     return false
   }
@@ -85,7 +86,8 @@ PopupWindow {
   function runwayText(name) {
     if (!report || !report.runway || !report.runway[name]) return ""
     var window = root.windows[name] || ({})
-    var label = Model.runwayLabel(report.runway[name].seconds, resetSeconds(window), window.remaining)
+    var entry = report.runway[name]
+    var label = Model.runwayLabel(entry.seconds, resetSeconds(window), window.remaining, entry.reason)
     if (label === "") return ""
     var burn = Model.burnText(report.runway[name].ratePerHour, name)
     return burn ? label + " \u00b7 " + burn : label
@@ -95,7 +97,8 @@ PopupWindow {
     var window = root.windows[name] || ({})
     var entry = report && report.runway ? report.runway[name] : null
     var level = Model.runwayLevel(window.remaining, entry ? entry.seconds : null,
-      resetSeconds(window), root.cfg.warnRemaining, root.cfg.critRemaining)
+      resetSeconds(window), root.cfg.warnRemaining, root.cfg.critRemaining,
+      entry ? entry.reason : null)
     if (level === "crit") return critColor
     if (level === "warn") return warnColor
     if (level === "normal") return okColor
@@ -255,8 +258,8 @@ PopupWindow {
           }
           Text {
             width: parent.width - Style.space(34) - Style.space(50)
-              - (root.showRunway ? Style.space(155) + 3 * Style.space(6) : 2 * Style.space(6))
-            text: "Resets"
+              - (root.showRunway ? Style.space(200) + 3 * Style.space(6) : 2 * Style.space(6))
+            text: "Resets in"
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -265,7 +268,7 @@ PopupWindow {
           }
           Text {
             visible: root.showRunway
-            width: Style.space(155)
+            width: Style.space(200)
             text: "Runway"
             color: root.dim
             font.family: root.fontFamily
@@ -311,10 +314,9 @@ PopupWindow {
             }
             Text {
               width: parent.width - Style.space(34) - Style.space(50)
-                - (root.showRunway ? Style.space(155) + 3 * Style.space(6) : 2 * Style.space(6))
+                - (root.showRunway ? Style.space(200) + 3 * Style.space(6) : 2 * Style.space(6))
               text: parent.avail
-                ? Model.fmtReset(modelData, parent.win.resetsAt)
-                  + " (" + Model.fmtDuration(root.resetSeconds(parent.win)) + ")"
+                ? Model.fmtDuration(root.resetSeconds(parent.win))
                 : "no data"
               color: root.dim
               font.family: root.fontFamily
@@ -324,7 +326,7 @@ PopupWindow {
             }
             Text {
               visible: root.showRunway
-              width: Style.space(155)
+              width: Style.space(200)
               text: root.runwayText(modelData)
               color: root.runwayColor(modelData)
               font.family: root.fontFamily

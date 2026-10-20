@@ -448,7 +448,7 @@ def compute_runway(
     for name in WINDOWS:
         window = windows.get(name) or {}
         if not window.get("available") or window.get("remaining") is None:
-            result[name] = {"seconds": None}
+            result[name] = {"seconds": None, "reason": "unavailable"}
             continue
         horizon = RUNWAY_HORIZON_SEC[name]
         points: List[Tuple[dt.datetime, int]] = []
@@ -464,11 +464,11 @@ def compute_runway(
             points.append((sample["_dt"], int(value)))
 
         if len(points) < RUNWAY_MIN_POINTS:
-            result[name] = {"seconds": None}
+            result[name] = {"seconds": None, "reason": "insufficient"}
             continue
         span = (points[-1][0] - points[0][0]).total_seconds()
         if span < RUNWAY_MIN_SPAN_SEC:
-            result[name] = {"seconds": None}
+            result[name] = {"seconds": None, "reason": "insufficient"}
             continue
 
         origin = points[0][0]
@@ -478,11 +478,11 @@ def compute_runway(
         mean_y = sum(ys) / len(ys)
         denominator = sum((value - mean_x) ** 2 for value in xs)
         if denominator <= 0:
-            result[name] = {"seconds": None}
+            result[name] = {"seconds": None, "reason": "insufficient"}
             continue
         slope = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)) / denominator
         if slope <= 0:
-            result[name] = {"seconds": None}
+            result[name] = {"seconds": None, "ratePerHour": 0.0, "reason": "flat"}
             continue
         remaining = float(window["remaining"])
         seconds = 0.0 if remaining <= 0 else remaining / slope
@@ -492,6 +492,7 @@ def compute_runway(
         result[name] = {
             "seconds": int(max(0, round(seconds))),
             "ratePerHour": round(slope * 3600, 2),
+            "reason": "ok",
         }
     return result
 

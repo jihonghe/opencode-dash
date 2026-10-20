@@ -109,8 +109,12 @@ from samples the plugin records each time it refreshes:
   reflects the **forecast**. They can differ: a green percentage with an amber
   runway means there is still quota, but the current burn will use it before
   the window resets.
-- In the tooltip, `Resets` shows only the time and relative countdown; the
-  `Runway` cell also shows the burn rate, and the footer shows the sample span.
+- If a window has no consumption at all (a flat burn rate), the table shows
+  `0.0%/h`, `Lasts until reset`, and `after reset` instead of blank cells.
+  Insufficient sample history is still hidden/blank.
+- In the tooltip, `Resets in` shows only the countdown (`2m`, `5d 2h`); the
+  panel shows both the absolute reset time and the countdown. The `Runway`
+  cell also shows the burn rate, and the footer shows the sample span.
 
 ### Data sources and privacy
 
@@ -175,8 +179,9 @@ omarchy plugin validate .
 For UI state tests, add `"debugFixture": "/path/to/tests/fixtures/report-stale.json"`
 to the widget's `shell.json` entry. The script then returns that fixture
 instead of real data. Available fixtures: `report-stale.json`,
-`report-no-key.json`, `report-auth-expired.json`, and
-`report-not-ready.json` (Runway table hidden). Remove the setting when done.
+`report-no-key.json`, `report-auth-expired.json`, `report-not-ready.json`
+(Runway table hidden), and `report-idle.json` (zero burn / idle window).
+Remove the setting when done.
 
 ### Credits and license
 
@@ -277,8 +282,10 @@ omarchy plugin remove jihonghe.opencode-quota
   - **红色**：剩余已到/低于严重阈值，或窗口已经为空。
 - 百分比颜色表达**当前剩余**，Runway 颜色表达**预测**。两者可以不同：绿色百分比 +
   amber runway 表示“还剩不少，但当前速度会在重置前用完”。
-- Tooltip 的 `Resets` 列只显示时间和相对倒计时；`Runway` 单元格附带 burn rate，
-  底部显示采样跨度。
+- 如果某个窗口完全没有消耗（burn rate 为 0），表格显示 `0.0%/h`、
+  `Lasts until reset`、`after reset`，而不是空白；样本历史不足时仍然隐藏/留空。
+- Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板同时显示绝对重置
+  时间和倒计时。`Runway` 单元格附带 burn rate，底部显示采样跨度。
 
 ### 数据源与隐私
 

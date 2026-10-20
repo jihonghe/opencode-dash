@@ -111,6 +111,12 @@ Item {
     check("runway level crit", Model.runwayLevel(5, 1800, 3600, 20, 10) === "crit")
     check("runway level empty", Model.runwayLevel(0, 0, 3600, 20, 10) === "crit")
     check("runway level none", Model.runwayLevel(74, null, 3600, 20, 10) === "none")
+    check("runway level flat", Model.runwayLevel(74, null, 3600, 20, 10, "flat") === "normal")
+    check("burn idle", Model.burnText(0, "rolling") === "0.0%/h")
+    check("runway idle label", Model.runwayLabel(null, 3600, 74, "flat") === "Lasts until reset")
+    check("runway idle empty", Model.runwayLabel(null, 3600, 0, "flat") === "Empty")
+    check("eta idle", Model.etaLabel(74, 20, 0, 3600, "flat") === "after reset")
+    check("eta idle now", Model.etaLabel(15, 20, 0, 3600, "flat") === "now")
 
     var config = { layout: { right: [{ id: "jihonghe.opencode-quota", barWindows: "all" }, { id: "omarchy.clock" }] } }
     var saved = Model.savedBarSettings(config, "jihonghe.opencode-quota", { section: "right", index: 0 })

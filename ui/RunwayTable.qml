@@ -39,7 +39,8 @@ Column {
     var names = ["rolling", "weekly", "monthly"]
     for (var i = 0; i < names.length; i++) {
       var entry = runway[names[i]]
-      if (entry && entry.seconds !== null && entry.seconds !== undefined) return true
+      if (entry && ((entry.seconds !== null && entry.seconds !== undefined)
+          || entry.reason === "flat")) return true
     }
     return false
   }
@@ -84,18 +85,21 @@ Column {
 
   function runwayFor(name) {
     var window = windows[name] || ({})
-    return Model.runwayLabel(runwaySeconds(name), resetSeconds(window), window.remaining)
+    var entry = runway[name] || ({})
+    return Model.runwayLabel(runwaySeconds(name), resetSeconds(window), window.remaining, entry.reason)
   }
 
   function etaFor(name, threshold) {
     var window = windows[name] || ({})
-    return Model.etaLabel(window.remaining, threshold, rate(name), resetSeconds(window))
+    var entry = runway[name] || ({})
+    return Model.etaLabel(window.remaining, threshold, rate(name), resetSeconds(window), entry.reason)
   }
 
   function runwayColor(name) {
     var window = windows[name] || ({})
+    var entry = runway[name] || ({})
     var level = Model.runwayLevel(window.remaining, runwaySeconds(name),
-      resetSeconds(window), cfg.warnRemaining, cfg.critRemaining)
+      resetSeconds(window), cfg.warnRemaining, cfg.critRemaining, entry.reason)
     if (level === "crit") return critColor
     if (level === "warn") return warnColor
     if (level === "normal") return okColor
