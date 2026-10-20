@@ -281,7 +281,7 @@ function tooltip(report, settings, nowMs) {
 
   var leftHeader = cfg.percentMode === "used" ? "Used" : "Left"
   var header = padEnd("Win", 3) + "  " + padStart(leftHeader, 5) + "  "
-    + padStart("Resets in", 9) + "  " + padStart("At", 11)
+    + padStart("Resets in", 9) + "  " + padStart("At", 11) + "  " + padStart("Runway", 7)
   var lines = [title, separator, padEnd(header, TOOLTIP_WIDTH)]
 
   var names = availableNames(report.windows)
@@ -295,10 +295,13 @@ function tooltip(report, settings, nowMs) {
         resetSeconds = Math.max(0, Math.round((resetTime - (nowMs || Date.now())) / 1000))
       }
     }
+    var runway = report.runway && report.runway[name] ? report.runway[name].seconds : null
+    var runwayText = runway !== null && runway !== undefined ? fmtDuration(runway) : "\u2014"
     var row = padEnd(windowLabel(name), 3)
       + "  " + padStart(percentText(window, cfg.percentMode) + "%", 5)
       + "  " + padStart(fmtDuration(resetSeconds), 9)
       + "  " + padStart(fmtReset(name, window.resetsAt), 11)
+      + "  " + padStart(runwayText, 7)
     lines.push(padEnd(row, TOOLTIP_WIDTH))
   }
 

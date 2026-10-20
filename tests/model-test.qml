@@ -93,7 +93,8 @@ Item {
     var tip = Model.tooltip(report, {})
     check("tooltip windows", tip.indexOf("5h") !== -1 && tip.indexOf("7d") !== -1
       && tip.indexOf("80%") !== -1 && tip.indexOf("Win") !== -1)
-    check("tooltip header", tip.indexOf("Resets in") !== -1 && tip.indexOf("At") !== -1)
+    check("tooltip header", tip.indexOf("Resets in") !== -1 && tip.indexOf("At") !== -1
+      && tip.indexOf("Runway") !== -1)
     check("tooltip local usage", tip.indexOf("Local usage - this cycle") !== -1)
     check("tooltip model header", tip.indexOf("Model") !== -1 && tip.indexOf("Cost") !== -1
       && tip.indexOf("Msgs") !== -1 && tip.indexOf("Free") !== -1)
