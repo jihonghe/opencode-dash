@@ -91,12 +91,31 @@ Item {
     check("bool string", Model.settingsWithDefaults({ notifyEnabled: "false" }).notifyEnabled === false)
 
     var tip = Model.tooltip(report, {})
-    check("tooltip windows", tip.indexOf("5h") !== -1 && tip.indexOf("7d") !== -1 && tip.indexOf("M ") !== -1)
-    check("tooltip local usage", tip.indexOf("local usage this cycle") !== -1)
+    check("tooltip windows", tip.indexOf("5h") !== -1 && tip.indexOf("7d") !== -1
+      && tip.indexOf("80%") !== -1 && tip.indexOf("Win") !== -1)
+    check("tooltip header", tip.indexOf("Resets in") !== -1 && tip.indexOf("At") !== -1)
+    check("tooltip local usage", tip.indexOf("Local usage - this cycle") !== -1)
+    check("tooltip model header", tip.indexOf("Model") !== -1 && tip.indexOf("Cost") !== -1 && tip.indexOf("Msgs") !== -1)
     check("tooltip updated", tip.indexOf("updated 20:35") !== -1)
+    var tipLines = tip.split("\n")
+    var tipWidth = tipLines[0].length
+    var aligned = true
+    for (var tl = 0; tl < tipLines.length; tl++) if (tipLines[tl].length !== tipWidth) aligned = false
+    check("tooltip aligned", aligned)
+
     var staleTip = Model.tooltip({ state: "stale", stale: true, updatedAt: "2026-10-20T20:35:00+00:00", windows: report.windows }, {})
-    check("tooltip stale", staleTip.indexOf("cached at 20:35") !== -1)
-    check("tooltip no key", Model.tooltip({ state: "no-key" }, {}).indexOf("not signed in") !== -1)
+    check("tooltip stale", staleTip.indexOf("cached at 20:35") !== -1 && staleTip.indexOf("(cached)") !== -1)
+    var staleLines = staleTip.split("\n")
+    var staleAligned = true
+    for (var sl = 0; sl < staleLines.length; sl++) if (staleLines[sl].length !== staleLines[0].length) staleAligned = false
+    check("tooltip stale aligned", staleAligned)
+
+    var noKeyTip = Model.tooltip({ state: "no-key" }, {})
+    check("tooltip no key", noKeyTip.indexOf("Not signed in") !== -1)
+    var noKeyLines = noKeyTip.split("\n")
+    var noKeyAligned = true
+    for (var nl = 0; nl < noKeyLines.length; nl++) if (noKeyLines[nl].length !== noKeyLines[0].length) noKeyAligned = false
+    check("tooltip no key aligned", noKeyAligned)
 
     var now = new Date("2026-10-20T12:00:00Z").getTime()
     check("trend 7d", Model.trendDaily(report.daily, "7d", now).length === 2)

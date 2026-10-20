@@ -210,30 +210,80 @@ function fmtCost(value) {
   return "$" + cost.toFixed(2)
 }
 
+var PAD = "\u00a0"
+var TOOLTIP_WIDTH = 41
+
+function padEnd(value, width) {
+  var text = String(value)
+  while (text.length < width) text += PAD
+  return text
+}
+
+function padStart(value, width) {
+  var text = String(value)
+  while (text.length < width) text = PAD + text
+  return text
+}
+
+function truncate(value, width) {
+  var text = String(value)
+  if (text.length <= width) return text
+  return text.slice(0, Math.max(1, width - 1)) + "\u2026"
+}
+
+function repeatChar(character, count) {
+  var out = ""
+  for (var i = 0; i < count; i++) out += character
+  return out
+}
+
+function tooltipBlock(lines) {
+  var width = 0
+  for (var i = 0; i < lines.length; i++) width = Math.max(width, lines[i].length)
+  var out = []
+  for (var j = 0; j < lines.length; j++) out.push(padEnd(lines[j], width))
+  return out.join("\n")
+}
+
 function tooltip(report, settings, nowMs) {
   var cfg = settingsWithDefaults(settings)
   if (!report) return "OpenCode Quota"
   var state = report.state || "no-data"
-  var label = cfg.planLabel
-  var lines = []
+  var label = String(cfg.planLabel || "OpenCode Go")
+  var title = truncate(label, TOOLTIP_WIDTH)
+  var separator = repeatChar("-", TOOLTIP_WIDTH)
 
   if (state === "no-key") {
-    lines.push(label + " \u00b7 not signed in")
-    lines.push("Run OpenCode and sign in to OpenCode Go.")
-    return lines.join("\n")
+    return tooltipBlock([
+      title,
+      separator,
+      "Not signed in to OpenCode Go.",
+      "Run OpenCode and sign in."
+    ])
   }
   if (state === "auth-expired") {
-    lines.push(label + " \u00b7 sign-in expired")
-    lines.push("Run OpenCode to refresh credentials.")
-    return lines.join("\n")
+    return tooltipBlock([
+      title,
+      separator,
+      "Sign-in expired.",
+      "Run OpenCode to refresh credentials."
+    ])
   }
   if (state === "no-data" || state === "error") {
-    lines.push(label + " \u00b7 no data")
-    lines.push(report.stale ? "API unavailable and no cached reading." : "Waiting for the first reading.")
-    return lines.join("\n")
+    var message = state === "error"
+      ? "Could not read quota data."
+      : (report.stale ? "API unavailable and no cached reading." : "Waiting for the first reading.")
+    return tooltipBlock([title, separator, message])
   }
 
-  lines.push(label + " \u00b7 " + (cfg.percentMode === "used" ? "used" : "remaining"))
+  var modeLabel = cfg.percentMode === "used" ? "used" : "remaining"
+  title = truncate(label + " - " + modeLabel + (report.stale ? " (cached)" : ""), TOOLTIP_WIDTH)
+
+  var leftHeader = cfg.percentMode === "used" ? "Used" : "Left"
+  var header = padEnd("Win", 3) + "  " + padStart(leftHeader, 5) + "  "
+    + padStart("Resets in", 9) + "  " + padEnd("At", 11)
+  var lines = [title, separator, padEnd(header, TOOLTIP_WIDTH)]
+
   var names = availableNames(report.windows)
   for (var i = 0; i < names.length; i++) {
     var name = names[i]
@@ -245,26 +295,44 @@ function tooltip(report, settings, nowMs) {
         resetSeconds = Math.max(0, Math.round((resetTime - (nowMs || Date.now())) / 1000))
       }
     }
-    lines.push(windowLabel(name) + "  " + percentText(window, cfg.percentMode) + "%  resets "
-      + fmtReset(name, window.resetsAt) + " (~" + fmtDuration(resetSeconds) + ")")
+    var row = padEnd(windowLabel(name), 3)
+      + "  " + padStart(percentText(window, cfg.percentMode) + "%", 5)
+      + "  " + padStart(fmtDuration(resetSeconds), 9)
+      + "  " + padEnd(fmtReset(name, window.resetsAt), 11)
+    lines.push(padEnd(row, TOOLTIP_WIDTH))
   }
 
   if (cfg.showModelDetail && report.models && report.models.length) {
-    lines.push("\u2500\u2500 local usage this cycle \u2500\u2500")
-    var limit = Math.min(report.models.length, 5)
+    lines.push(separator)
+    lines.push(padEnd("Local usage - this cycle", TOOLTIP_WIDTH))
+    lines.push(padEnd(
+      padEnd("Model", 22) + "  " + padStart("Cost", 5) + "  " + padStart("Msgs", 10),
+      TOOLTIP_WIDTH
+    ))
+    var limit = Math.min(report.models.length, 3)
     for (var m = 0; m < limit; m++) {
       var model = report.models[m]
-      var id = String(model.id || "unknown")
-      if (id.length > 28) id = id.slice(0, 27) + "\u2026"
-      lines.push(id + "  " + fmtCost(model.cost) + " / " + model.messages
-        + (model.free ? " (free)" : ""))
+      var modelName = truncate(String(model.id || "unknown"), 22)
+      var messages = String(model.messages) + (model.free ? " (free)" : "")
+      lines.push(padEnd(
+        padEnd(modelName, 22) + "  " + padStart(fmtCost(model.cost), 5)
+          + "  " + padStart(messages, 10),
+        TOOLTIP_WIDTH
+      ))
     }
-    if (report.models.length > limit) lines.push("+" + (report.models.length - limit) + " more models")
+    if (report.models.length > limit) {
+      lines.push(padEnd("+" + (report.models.length - limit) + " more models", TOOLTIP_WIDTH))
+    }
   }
 
-  if (report.stale) lines.push("cached at " + fmtUpdated(report.updatedAt) + " (API unavailable)")
-  else lines.push("updated " + fmtUpdated(report.updatedAt))
-  return lines.join("\n")
+  lines.push(separator)
+  lines.push(padEnd(
+    report.stale
+      ? "cached at " + fmtUpdated(report.updatedAt) + " (API unavailable)"
+      : "updated " + fmtUpdated(report.updatedAt),
+    TOOLTIP_WIDTH
+  ))
+  return tooltipBlock(lines)
 }
 
 function stateMessage(report) {
