@@ -235,7 +235,7 @@ PopupWindow {
 
         Row {
           width: parent.width
-          spacing: Style.space(8)
+          spacing: Style.space(10)
 
           Text {
             width: Style.space(56)
@@ -258,17 +258,18 @@ PopupWindow {
           }
           Text {
             width: parent.width - Style.space(56) - Style.space(48)
-              - (root.showRunway ? Style.space(186) + 3 * Style.space(8) : 2 * Style.space(8))
+              - (root.showRunway ? Style.space(210) + 3 * Style.space(10) : 2 * Style.space(10))
             text: "Resets in"
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             font.bold: true
+            horizontalAlignment: Text.AlignRight
             textFormat: Text.PlainText
           }
           Text {
             visible: root.showRunway
-            width: Style.space(186)
+            width: Style.space(210)
             text: "Runway"
             color: root.dim
             font.family: root.fontFamily
@@ -285,7 +286,7 @@ PopupWindow {
           delegate: Row {
             required property string modelData
             width: parent.width
-            spacing: Style.space(8)
+            spacing: Style.space(10)
 
             readonly property var win: root.windows[modelData] ? root.windows[modelData] : ({})
             readonly property bool avail: Model.isAvailable(win)
@@ -314,19 +315,20 @@ PopupWindow {
             }
             Text {
               width: parent.width - Style.space(56) - Style.space(48)
-                - (root.showRunway ? Style.space(186) + 3 * Style.space(8) : 2 * Style.space(8))
+                - (root.showRunway ? Style.space(210) + 3 * Style.space(10) : 2 * Style.space(10))
               text: parent.avail
                 ? Model.fmtDuration(root.resetSeconds(parent.win))
                 : "no data"
               color: root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
+              horizontalAlignment: Text.AlignRight
               elide: Text.ElideRight
               textFormat: Text.PlainText
             }
             Text {
               visible: root.showRunway
-              width: Style.space(186)
+              width: Style.space(210)
               text: root.runwayText(modelData)
               color: root.runwayColor(modelData)
               font.family: root.fontFamily

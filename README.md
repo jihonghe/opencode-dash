@@ -88,11 +88,12 @@ from samples the plugin records each time it refreshes:
   sample must be reasonably fresh. Until then, the Runway table is **not
   displayed at all** — no placeholders.
 - `Burn`: average percentage points per hour (5h) or per day (7d / M).
-- `Runway`: time until the period is exhausted. `Lasts until reset` means the
-  current burn rate will not exhaust it before the period resets.
+- `Runway`: time until the period is exhausted. `≥ 4h 18m` means the current
+  burn rate will last at least until the reset (it uses the same countdown as
+  `Resets in`); `~3d 8h` means it runs out before reset; `0m` means empty.
 - `Warn` / `Crit`: time until the period reaches the configured remaining
-  thresholds. `now` means it is already below, `after reset` means it will not
-  reach the threshold before the period resets.
+  thresholds. `now` means it is already below; `> 4h 18m` means the threshold
+  is after the reset and will not be reached before the window ends.
 - The footer shows the sample basis, e.g.
   `Based on official API samples · 5h 10m · 106 points`.
 - If usage is flat or a period just reset, that period has no estimate until
@@ -110,11 +111,12 @@ from samples the plugin records each time it refreshes:
   runway means there is still quota, but the current burn will use it before
   the period resets.
 - If a period has no consumption at all (a flat burn rate), the table shows
-  `0.0%/h`, `Lasts until reset`, and `after reset` instead of blank cells.
-  Insufficient sample history is still hidden/blank.
+  `0.0%/h`, `≥ <reset countdown>`, and `> <reset countdown>` instead of blank
+  cells. Insufficient sample history is still hidden/blank.
 - In the tooltip, `Resets in` shows only the countdown (`2m`, `5d 2h`); the
-  panel shows both the absolute reset time and the countdown. The `Runway`
-  cell also shows the burn rate, and the footer shows the sample span.
+  panel shows `Resets in <countdown> (<absolute time>)`. The `Runway` cell in
+  the tooltip also shows the burn rate, and the footer shows the sample span.
+- The Runway table legend: `≥ lasts until reset · > after reset`.
 
 ### Data sources and privacy
 
@@ -268,9 +270,10 @@ omarchy plugin remove jihonghe.opencode-quota
 - 至少需要 **3 个样本**、跨度至少 **1 小时**，且最新样本不能太旧。在此之前，
   Runway 表**完全不显示**——没有任何占位内容。
 - `Burn`：平均消耗速度；5h 用 `%/h`，7d / M 用 `%/day`。
-- `Runway`：额度耗尽时间。`Lasts until reset` 表示按当前速度不会在重置前用完。
-- `Warn` / `Crit`：距离进入设置里剩余阈值的时间。`now` 表示已经在阈值下，
-  `after reset` 表示重置前不会到达该阈值。
+- `Runway`：额度耗尽时间。`≥ 4h 18m` 表示按当前速度至少能撑到重置（使用和
+  `Resets in` 相同的倒计时）；`~3d 8h` 表示会在重置前用完；`0m` 表示已经为空。
+- `Warn` / `Crit`：距离进入设置里剩余阈值的时间。`now` 表示已经在阈值下；
+  `> 4h 18m` 表示阈值在重置之后，重置前不会到达。
 - 底部显示样本依据，例如
   `Based on official API samples · 5h 10m · 106 points`。
 - 如果用量平稳或周期刚重置，该周期暂时没有估算；所有周期都没有可用估算时，
@@ -283,9 +286,11 @@ omarchy plugin remove jihonghe.opencode-quota
 - 百分比颜色表达**当前剩余**，Runway 颜色表达**预测**。两者可以不同：绿色百分比 +
   amber runway 表示“还剩不少，但当前速度会在重置前用完”。
 - 如果某个周期完全没有消耗（burn rate 为 0），表格显示 `0.0%/h`、
-  `Lasts until reset`、`after reset`，而不是空白；样本历史不足时仍然隐藏/留空。
-- Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板同时显示绝对重置
-  时间和倒计时。`Runway` 单元格附带 burn rate，底部显示采样跨度。
+  `≥ <重置倒计时>`、`> <重置倒计时>`，而不是空白；样本历史不足时仍然隐藏/留空。
+- Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板显示
+  `Resets in <倒计时> (<绝对时间>)`。Tooltip 的 `Runway` 单元格附带 burn rate，
+  底部显示采样跨度。
+- Runway 表图例：`≥ lasts until reset · > after reset`。
 
 ### 数据源与隐私
 

@@ -23,7 +23,7 @@ Column {
   readonly property color dim: Qt.darker(foreground, 1.45)
   readonly property real columnGap: Style.space(10)
   readonly property real periodWidth: Style.space(68)
-  readonly property real burnWidth: Style.space(72)
+  readonly property real burnWidth: Style.space(60)
   readonly property real etaWidth: Style.space(60)
   readonly property real runwayWidth: Math.max(Style.space(140),
     width - periodWidth - burnWidth - etaWidth * 2 - columnGap * 4)
@@ -137,7 +137,7 @@ Column {
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
-      horizontalAlignment: Text.AlignRight
+      horizontalAlignment: Text.AlignHCenter
       textFormat: Text.PlainText
     }
     Text {
@@ -147,6 +147,7 @@ Column {
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
+      horizontalAlignment: Text.AlignHCenter
       textFormat: Text.PlainText
     }
     Text {
@@ -198,7 +199,7 @@ Column {
           color: root.dim
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
-          horizontalAlignment: Text.AlignRight
+          horizontalAlignment: Text.AlignHCenter
           textFormat: Text.PlainText
         }
         Text {
@@ -207,6 +208,7 @@ Column {
           color: root.runwayColor(modelData)
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall
+          horizontalAlignment: Text.AlignHCenter
           elide: Text.ElideRight
           textFormat: Text.PlainText
         }
@@ -237,6 +239,15 @@ Column {
         color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.07)
       }
     }
+  }
+
+  Text {
+    width: parent.width
+    text: "\u2265 lasts until reset  \u00b7  > after reset"
+    color: root.dim
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.caption
+    textFormat: Text.PlainText
   }
 
   Text {

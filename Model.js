@@ -254,41 +254,36 @@ function burnText(ratePerHour, windowName) {
 }
 
 function runwayLabel(seconds, resetInSec, remaining, reason) {
+  var rem = remaining === null || remaining === undefined ? null : Number(remaining)
+  if (rem !== null && isFinite(rem) && rem <= 0) return "0m"
+  var reset = resetInSec === null || resetInSec === undefined ? null : Number(resetInSec)
   if (reason === "flat") {
-    if (remaining !== null && remaining !== undefined && Number(remaining) <= 0) return "Empty"
-    if (resetInSec !== null && resetInSec !== undefined && Number(resetInSec) > 0) return "Lasts until reset"
+    if (reset !== null && isFinite(reset) && reset > 0) return "\u2265 " + fmtDuration(reset)
     return "Idle"
   }
   if (seconds === null || seconds === undefined) return ""
   var value = Number(seconds)
   if (!isFinite(value)) return ""
-  if (remaining !== null && remaining !== undefined && Number(remaining) <= 0) return "Empty"
-  if (resetInSec !== null && resetInSec !== undefined
-      && isFinite(Number(resetInSec)) && value >= Number(resetInSec) - 60) {
-    return "Lasts until reset"
+  if (reset !== null && isFinite(reset) && value >= reset - 60) {
+    return "\u2265 " + fmtDuration(reset)
   }
   return "~" + fmtDuration(value)
 }
 
 function etaLabel(remaining, threshold, ratePerHour, resetInSec, reason) {
   if (remaining === null || remaining === undefined) return ""
-  if (reason === "flat") {
-    var flatRem = Number(remaining)
-    if (!isFinite(flatRem)) return ""
-    if (flatRem <= Number(threshold)) return "now"
-    if (resetInSec !== null && resetInSec !== undefined && Number(resetInSec) > 0) return "after reset"
-    return ""
-  }
-  if (ratePerHour === null || ratePerHour === undefined) return ""
   var rem = Number(remaining)
-  var rate = Number(ratePerHour)
-  if (!isFinite(rem) || !isFinite(rate) || rate <= 0) return ""
+  if (!isFinite(rem)) return ""
   if (rem <= Number(threshold)) return "now"
+  var reset = resetInSec === null || resetInSec === undefined ? null : Number(resetInSec)
+  var beyondReset = reset !== null && isFinite(reset) && reset > 0
+    ? "> " + fmtDuration(reset) : ""
+  if (reason === "flat") return beyondReset
+  if (ratePerHour === null || ratePerHour === undefined) return ""
+  var rate = Number(ratePerHour)
+  if (!isFinite(rate) || rate <= 0) return beyondReset
   var seconds = (rem - Number(threshold)) * 3600 / rate
-  if (resetInSec !== null && resetInSec !== undefined
-      && isFinite(Number(resetInSec)) && seconds >= Number(resetInSec)) {
-    return "after reset"
-  }
+  if (beyondReset !== "" && seconds >= reset - 60) return beyondReset
   return "~" + fmtDuration(seconds)
 }
 

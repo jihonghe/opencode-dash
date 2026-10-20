@@ -138,7 +138,7 @@ Item {
       Text {
         width: parent.width
         text: root.available
-          ? "Resets " + Model.fmtDuration(root.resetInSec)
+          ? "Resets in " + Model.fmtDuration(root.resetInSec)
             + "  (" + Model.fmtReset(root.name, root.window.resetsAt) + ")"
           : "No usage data for this period"
         color: root.dim
