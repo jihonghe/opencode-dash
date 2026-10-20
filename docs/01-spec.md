@@ -1,5 +1,8 @@
 # 01 · 功能规格
 
+> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势/runway 基于官方 API 采样，样本不足（<3 点或 <1h）时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
+
+
 > 产品：**OpenCode Quota**（Omarchy 顶栏插件）
 > 目标用户：使用 OpenCode Go / Go Plus 的 Omarchy 用户
 > 一句话：直接看到订阅额度还剩多少、什么时候重置；点开有详情、趋势、模型用量和设置；阈值到了会提醒。

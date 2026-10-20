@@ -10,9 +10,8 @@ Column {
   property color foreground: Commons.Color.foreground
   property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
-  property bool invalidRenew: false
 
-  readonly property bool editing: planField.activeFocus || renewField.activeFocus
+  readonly property bool editing: planField.activeFocus
   readonly property color dim: Qt.darker(foreground, 1.45)
 
   signal updateSetting(string key, var value)
@@ -187,61 +186,6 @@ Column {
       accent: root.accent
       onToggled: root.updateSetting("notifyReset", !checked)
     }
-  }
-
-  SettingRow {
-    label: "Show per-model usage"
-    foreground: root.foreground
-    fontFamily: root.fontFamily
-
-    ToggleSwitch {
-      anchors.right: parent.right
-      checked: root.value("showModelDetail", true) === true
-      foreground: root.foreground
-      accent: root.accent
-      onToggled: root.updateSetting("showModelDetail", !checked)
-    }
-  }
-
-  PanelSeparator { foreground: root.foreground }
-  PanelSectionHeader {
-    text: "Renew override"
-    foreground: root.foreground
-    fontFamily: root.fontFamily
-  }
-
-  SettingRow {
-    label: "Manual renew time"
-    hint: "ISO 8601. Used only when the API is unavailable"
-    foreground: root.foreground
-    fontFamily: root.fontFamily
-
-    TextField {
-      id: renewField
-      width: parent.width
-      text: String(root.value("renewOverride", ""))
-      placeholderText: "2026-11-17T22:35:00+08:00"
-      foreground: root.foreground
-      accent: root.accent
-      onEditingFinished: {
-        var newValue = text.trim()
-        if (newValue && isNaN(new Date(newValue).getTime())) {
-          root.invalidRenew = true
-          return
-        }
-        root.invalidRenew = false
-        root.updateSetting("renewOverride", newValue)
-      }
-    }
-  }
-
-  Text {
-    visible: root.invalidRenew
-    text: "Invalid ISO 8601 time; value not saved."
-    color: Commons.Color.urgent
-    font.family: root.fontFamily
-    font.pixelSize: Style.font.caption
-    textFormat: Text.PlainText
   }
 
   Text {

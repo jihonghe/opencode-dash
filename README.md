@@ -8,24 +8,28 @@
 
 ## English
 
-OpenCode Quota keeps your **OpenCode Go / Go Plus** subscription quota in the
-Omarchy bar. By default it shows the window that is closest to its limit, and
-one click opens reset countdowns, a runway estimate, local usage trends, and
-per-model detail.
+OpenCode Quota is an Omarchy bar widget for the **OpenCode Go / Go Plus**
+subscription. It reads the official usage endpoint, so the percentages include
+**every client** that uses the subscription — the OpenCode CLI/TUI, ZCode, and
+any future agent.
 
 ### Features
 
 - Bar display: `worst` (least remaining), `all` windows, or `month` only.
 - Remaining percentage by default; switch to used in the settings.
 - Status colors: healthy green, remaining ≤ 20% amber, ≤ 10% red with `!`.
-- Hover card: the percentage itself is colored (window labels stay in the foreground), with reset countdowns, runway, and local usage.
-- Panel: three quota windows, reset times and countdowns, runway, 7-day/cycle
-  trend, per-model usage, and an inline settings page.
+- Only the percentage is colored; the window label and `%` stay in the
+  foreground.
+- Panel: three quota windows, reset times/countdowns, runway, and a
+  remaining-percentage trend.
+- Trend ranges: `24h`, `7d`, and `Cycle`; three lines for 5h / 7d / M.
 - Threshold notifications through `notify-send`, deduplicated per window,
   level, and reset time.
-- OpenCode v2 credentials from `opencode.db`; v1 `auth.json` fallback.
+- Settings in the panel and in Setup → Plugins edit the same `shell.json`
+  fields.
 - Light and dark themes; top, bottom, left, and right bars.
-- No key storage, no telemetry, read-only database access.
+- Official account-level data only; no local agent logs, no model/cost
+  estimates, no telemetry.
 
 ### Requirements
 
@@ -70,13 +74,24 @@ fields.
 | `critRemaining` | integer | `10` | Critical below this remaining percentage |
 | `notifyEnabled` | boolean | `true` | Threshold notifications |
 | `notifyReset` | boolean | `false` | Notify when a window starts over |
-| `showModelDetail` | boolean | `true` | Show per-model usage in the panel |
-| `renewOverride` | string | `""` | ISO 8601 renewal time, used only when the API fails |
 | `planLabel` | string | `OpenCode Go` | Label shown in the panel and notifications |
 
 The bar text uses short labels: `5h` (rolling), `7d` (weekly), and `M`
 (subscription month). In a vertical bar the widget shows the worst window as
 two lines (`7d` / `79%`) to stay readable.
+
+### Trend and runway
+
+The official endpoint only returns the **current** percentages. The trend and
+runway are built from samples the plugin records each time it refreshes:
+
+- At least **3 samples** spanning **1 hour** are required.
+- Until then, the trend section and runway values are **not displayed at all**
+  — no `—` placeholders and no "collecting samples" noise.
+- Runway is a slope estimate capped at the next reset. If usage is flat or a
+  window just reset, that window has no runway until enough new samples
+  accumulate.
+- The trend is built from official readings, so it also covers every client.
 
 ### Data sources and privacy
 
@@ -86,22 +101,13 @@ two lines (`7d` / `79%`) to stay readable.
 - The key is read from the v2 `credential` table in
   `~/.local/share/opencode/opencode.db` (`integration_id = 'opencode-go'`), with
   `~/.local/share/opencode/auth.json` as the v1 fallback.
+- The database is opened with `mode=ro`, and only the `credential` table is
+  read. No session, message, model, or cost data is read from OpenCode.
 - The key is kept in memory only. It is never written to a file, cache, log,
   command line, or error message. The only host that receives it is
   `opencode.ai`.
-- The database is opened with `mode=ro`; only `credential`,
-  `session_message`, and `message` are read. OpenCode data is never modified.
-- Local model detail covers the `opencode-go` and `opencode` providers (the
-  latter is where free models such as nemotron appear). Local costs are shown
-  for information only and are **not** converted into quota percentages.
-- Local model detail comes from `opencode.db` and therefore only reflects
-  usage recorded by the **OpenCode CLI/TUI**. Other clients that use the same
-  subscription (for example ZCode) update the API percentages but do not write
-  to this database. The panel and tooltip show a `last MM-DD HH:mm` marker so
-  you can see how fresh the local data is. Costs are rounded to 2 decimals, so
-  a small increase may not change the displayed value.
 - Cache files live in `~/.cache/opencode-quota/` and contain percentages,
-  timestamps, and local usage only. Samples are kept for 30 days.
+  timestamps, and API samples only.
 - Standard `https_proxy` / `HTTPS_PROXY` environment variables are honored;
   no proxy is configured by the plugin itself.
 - No telemetry and no other network destinations.
@@ -109,12 +115,11 @@ two lines (`7d` / `79%`) to stay readable.
 ### How it works
 
 `BarWidget.qml` periodically runs `python3 scripts/quota.py --json`. The
-script reads the key, calls the usage endpoint, aggregates local per-model and
-per-day usage from `opencode.db`, appends a sample, computes runway, and
-returns one JSON document. QML only renders it. A 60-second cache and a file
-lock keep multiple bar instances from duplicating API calls; manual refresh
-(`middle click`, the panel button, or `r` in the panel) bypasses the cache.
-Notifications are sent with `notify-send`; no systemd unit is installed.
+script reads the key, calls the usage endpoint, appends a sample, computes
+runway, and returns one JSON document. QML only renders it. A 60-second cache
+and a file lock keep multiple bar instances from duplicating API calls; manual
+refresh (`middle click`, the panel button, or `r` in the panel) bypasses the
+cache. Notifications are sent with `notify-send`; no systemd unit is installed.
 
 ### Troubleshooting
 
@@ -122,6 +127,8 @@ Notifications are sent with `notify-send`; no systemd unit is installed.
   sign in to OpenCode Go.
 - **Values look stale**: the API is unreachable; the last successful reading
   is shown dimmed. The panel footer says when it was cached.
+- **No trend or runway**: wait until the plugin has at least 3 samples over
+  1 hour. They appear automatically; nothing is shown before that.
 - **No notifications**: check `notify-send`, your notification daemon, and
   Do Not Disturb. Alerts are deduplicated per window/level/reset.
 - **Check the data layer manually**:
@@ -147,8 +154,9 @@ omarchy plugin validate .
 
 For UI state tests, add `"debugFixture": "/path/to/tests/fixtures/report-stale.json"`
 to the widget's `shell.json` entry. The script then returns that fixture
-instead of real data. This hidden development setting is not part of the
-manifest schema; remove it when done.
+instead of real data. Available fixtures: `report-stale.json`,
+`report-no-key.json`, `report-auth-expired.json`, and
+`report-not-ready.json` (trend/runway hidden). Remove the setting when done.
 
 ### Credits and license
 
@@ -164,22 +172,22 @@ manifest schema; remove it when done.
 
 ## 中文
 
-OpenCode Quota 把 **OpenCode Go / Go Plus** 的订阅额度放进 Omarchy 顶栏。默认只显示
-剩余最少、最接近上限的那个窗口；点开面板可以看到三个窗口、重置倒计时、runway
-估算、本地用量趋势和按模型明细。
+OpenCode Quota 是一个显示 **OpenCode Go / Go Plus** 订阅额度的 Omarchy 顶栏插件。
+它直接读取官方 usage 端点，所以百分比覆盖**所有使用该订阅的客户端**——OpenCode
+CLI/TUI、ZCode，以及未来任何 Agent。
 
 ### 功能
 
 - 顶栏显示：`worst`（剩余最少）、`all`（三个窗口）、`month`（只看订阅月）。
 - 默认显示剩余百分比，可在设置里切换为已用。
-- 状态颜色：健康绿色，剩余 ≤ 20% 琥珀色，≤ 10% 红色并带 `!`。
-- hover 卡片：百分比本身按状态着色（窗口标签保持前景色），并显示重置倒计时、runway 和本地用量。
-- 面板：三个额度窗口、重置时间和倒计时、runway、7 天/本周期趋势、按模型用量、
-  面板内设置页。
+- 状态颜色：健康绿色、剩余 ≤ 20% amber、≤ 10% 红色并带 `!`。
+- 只有百分比本身着色，窗口标签和 `%` 保持前景色。
+- 面板：三个额度窗口、重置时间和倒计时、runway、剩余百分比趋势。
+- 趋势范围：`24h` / `7d` / `Cycle`，画 5h / 7d / M 三条线。
 - 阈值通知由 `notify-send` 发送；按“窗口 + 级别 + 重置时间”去重。
-- 支持 OpenCode v2（`opencode.db` 的 credential 表）和 v1（`auth.json`）凭据。
+- 面板设置页和 Setup → Plugins 修改同一份 `shell.json` 字段。
 - 明暗主题、top/bottom/left/right 四个方向的顶栏。
-- 不保存 key、无遥测、数据库只读。
+- 只使用官方账号级数据；不读本地 Agent 日志，不做模型/cost 估算，无遥测。
 
 ### 依赖
 
@@ -223,12 +231,21 @@ omarchy plugin remove jihonghe.opencode-quota
 | `critRemaining` | integer | `10` | 剩余低于此百分比时严重警告 |
 | `notifyEnabled` | boolean | `true` | 阈值通知 |
 | `notifyReset` | boolean | `false` | 窗口重置时通知 |
-| `showModelDetail` | boolean | `true` | 面板显示按模型用量 |
-| `renewOverride` | string | `""` | ISO 8601 续订时间，仅 API 失败时兜底 |
 | `planLabel` | string | `OpenCode Go` | 面板和通知里的套餐标签 |
 
 顶栏短标签：`5h`（滚动窗口）、`7d`（自然周）、`M`（订阅月）。垂直顶栏只显示
 最紧窗口，分两行显示（`7d` / `79%`），避免文字被截断。
+
+### 趋势与 Runway
+
+官方端点只返回**当前**百分比。趋势和 runway 来自插件每次刷新时记录的采样：
+
+- 至少需要 **3 个样本**、跨度至少 **1 小时**。
+- 在此之前，趋势区和 runway 值**完全不显示**——没有 `—` 占位，也没有
+  “Collecting samples…” 之类的提示。
+- Runway 是百分比斜率的估算，并封顶到下一次重置；如果用量平稳或窗口刚重置，该
+  窗口暂时没有 runway，直到积累足够的新样本。
+- 趋势来自官方读数，因此同样覆盖所有客户端。
 
 ### 数据源与隐私
 
@@ -237,34 +254,28 @@ omarchy plugin remove jihonghe.opencode-quota
 - key 优先从 `~/.local/share/opencode/opencode.db` 的 v2 `credential` 表读取
   （`integration_id = 'opencode-go'`），回退到
   `~/.local/share/opencode/auth.json`（v1）。
+- 数据库以 `mode=ro` 只读打开，只读取 `credential` 表；不读取 OpenCode 的 session、
+  message、模型或 cost 数据。
 - key 只在内存中使用：不写文件、不写缓存、不写日志、不进命令行、不进错误信息。
   唯一接收 key 的地址是 `opencode.ai`。
-- 数据库以 `mode=ro` 只读打开，只读取 `credential`、`session_message` 和
-  `message`，不修改 OpenCode 的任何数据。
-- 本地模型明细覆盖 `opencode-go` 和 `opencode` 两个 provider（免费模型如 nemotron
-  属于后者）。本地 cost 只用于展示，**不换算成配额百分比**。
-- 本地模型明细来自 `opencode.db`，只反映 **OpenCode CLI/TUI** 写入的用量。其它客户端
-  （例如 ZCode）会消耗同一个订阅、让 API 百分比变化，但不会写入这个数据库。面板和
-  tooltip 会显示 `last MM-DD HH:mm`，用来看本地数据有多新。cost 显示保留 2 位小数，
-  很小的新增可能不会改变显示值。
-- 缓存位于 `~/.cache/opencode-quota/`，只包含百分比、时间和本地用量；采样保留
-  30 天。
+- 缓存位于 `~/.cache/opencode-quota/`，只包含百分比、时间和 API 采样。
 - 尊重标准 `https_proxy` / `HTTPS_PROXY` 环境变量；插件本身不硬编码代理。
 - 无遥测，不访问其他网络地址。
 
 ### 工作原理
 
 `BarWidget.qml` 定时运行 `python3 scripts/quota.py --json`。脚本读取 key、调用额度
-端点、从 `opencode.db` 聚合按模型和按天的本地用量、写入采样、计算 runway，最后
-输出一份 JSON；QML 只负责渲染。60 秒缓存和文件锁避免多显示器重复请求；手动刷新
-（中键、面板按钮或面板内按 `r`）会绕过缓存。通知直接调用 `notify-send`，不安装
-systemd 单元。
+端点、写入采样、计算 runway，最后输出一份 JSON；QML 只负责渲染。60 秒缓存和文件
+锁避免多显示器重复请求；手动刷新（中键、面板按钮或面板内按 `r`）会绕过缓存。
+通知直接调用 `notify-send`，不安装 systemd 单元。
 
 ### 排障
 
 - **顶栏显示 `—`**：没有凭据或登录已过期。运行 OpenCode 并重新登录 OpenCode Go。
 - **数值看起来是旧的**：API 不可达，显示上次成功读数并变暗；面板底部会标注缓存
   时间。
+- **没有趋势或 runway**：等插件积累至少 3 个样本、跨度 1 小时，它们会自动出现；
+  在此之前不显示任何占位内容。
 - **没有通知**：检查 `notify-send`、通知守护进程和勿扰模式。通知按窗口/级别/
   重置时间去重。
 - **手动检查数据层**：
@@ -290,7 +301,8 @@ omarchy plugin validate .
 
 调试界面状态时，可以在 widget 的 `shell.json` entry 里加
 `"debugFixture": "/path/to/tests/fixtures/report-stale.json"`，脚本会直接返回该
-fixture。这个隐藏的开发字段不在 manifest schema 里，用完请删除。
+fixture。可用 fixture：`report-stale.json`、`report-no-key.json`、
+`report-auth-expired.json`、`report-not-ready.json`（趋势/runway 隐藏）。用完请删除。
 
 ### 致谢与许可
 

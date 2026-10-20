@@ -21,7 +21,6 @@ NOW = dt.datetime(2026, 10, 20, 12, 0, 0, tzinfo=dt.timezone.utc)
 ROLLING_RESET = "2026-10-20T16:08:43Z"
 WEEKLY_RESET = "2026-10-26T00:00:00Z"
 MONTHLY_RESET = "2026-11-17T14:35:30Z"
-CYCLE_START = "2026-10-17T14:35:30Z"
 
 
 def ok_raw():
@@ -30,10 +29,6 @@ def ok_raw():
         "weekly": {"available": True, "status": "ok", "percent": 20, "resetsAt": WEEKLY_RESET},
         "monthly": {"available": True, "status": "ok", "percent": 13, "resetsAt": MONTHLY_RESET},
     }
-
-
-def ms(value):
-    return int(value.timestamp() * 1000)
 
 
 class Base(unittest.TestCase):
@@ -69,66 +64,8 @@ class Base(unittest.TestCase):
             "insert into credential values(?, ?)",
             ("opencode-go", json.dumps({"type": "api", "key": key})),
         )
-        con.execute(
-            "create table session_message("
-            "id text primary key, session_id text, type text, seq integer, "
-            "time_created integer, time_updated integer, data text)"
-        )
         con.commit()
         con.close()
-
-    def add_message(
-        self,
-        model="deepseek-v4.1-flash",
-        provider="opencode-go",
-        cost=0.5,
-        when=None,
-        kind="assistant",
-        tokens=None,
-    ):
-        when = when or dt.datetime(2026, 10, 19, 12, 0, 0, tzinfo=dt.timezone.utc)
-        data = {
-            "model": {"id": model, "providerID": provider},
-            "tokens": tokens if tokens is not None else {
-                "input": 100,
-                "output": 20,
-                "reasoning": 5,
-                "cache": {"read": 1000, "write": 0},
-            },
-            "cost": cost,
-        }
-        con = sqlite3.connect(self.db)
-        con.execute(
-            "insert into session_message values(?, ?, ?, ?, ?, ?, ?)",
-            (
-                "%s-%s" % (model, when.timestamp()),
-                "ses_test",
-                kind,
-                0,
-                ms(when),
-                ms(when),
-                json.dumps(data),
-            ),
-        )
-        con.commit()
-        con.close()
-
-    def write_v1_db(self):
-        con = sqlite3.connect(self.db)
-        con.execute(
-            "create table message("
-            "id text, session_id text, type text, time_created integer, "
-            "providerID text, modelID text, tokens text, cost real)"
-        )
-        tokens = json.dumps({"input": 10, "output": 2, "reasoning": 1, "cache": {"read": 30}})
-        con.execute(
-            "insert into message values(?, ?, ?, ?, ?, ?, ?, ?)",
-            ("m1", "s1", "assistant", ms(dt.datetime(2026, 10, 19, 12, 0, tzinfo=dt.timezone.utc)),
-             "opencode-go", "deepseek-v4.1-flash", tokens, 1.25),
-        )
-        con.commit()
-        con.close()
-
 
 class KeyTests(Base):
     def test_v2_key_from_credential_table(self):
@@ -148,7 +85,6 @@ class KeyTests(Base):
         self.assertEqual(report["state"], "no-key")
         self.assertFalse(report["ok"])
         self.assertEqual(report["windows"], {})
-        self.assertIsNone(report["localUpdatedAt"])
 
 
 class ApiStateTests(Base):
@@ -161,7 +97,12 @@ class ApiStateTests(Base):
         self.assertEqual(report["windows"]["rolling"]["percent"], 2)
         self.assertEqual(report["windows"]["rolling"]["remaining"], 98)
         self.assertEqual(report["windows"]["rolling"]["resetInSec"], 14923)
-        self.assertEqual(report["cycleStart"], CYCLE_START)
+
+    def test_official_only_fields(self):
+        self.write_auth()
+        report = self.collect(fetch=lambda _key: ok_raw())
+        for field in ("models", "daily", "cycleStart", "localUpdatedAt"):
+            self.assertNotIn(field, report)
 
     def test_auth_expired(self):
         self.write_auth()
@@ -230,65 +171,6 @@ class ApiStateTests(Base):
         self.collect(now=NOW + dt.timedelta(seconds=62), force=True, fetch=fetch)
         self.assertEqual(calls["n"], 3)
 
-    def test_renew_override_used_when_api_fails(self):
-        self.write_auth()
-
-        def fail(_key):
-            raise quota.ApiError("network")
-
-        report = self.collect(
-            now=NOW + dt.timedelta(seconds=120),
-            renew_override="2026-12-01T00:00:00Z",
-            fetch=fail,
-        )
-        self.assertEqual(report["cycleStart"], "2026-11-01T00:00:00Z")
-
-
-class AggregationTests(Base):
-    def test_v2_model_and_daily_aggregation(self):
-        self.write_auth()
-        self.write_v2_db()
-        self.add_message(cost=1.5)
-        self.add_message(cost=0.5, when=dt.datetime(2026, 10, 20, 8, 0, tzinfo=dt.timezone.utc))
-        self.add_message(model="nemotron-3.5-super-vl-free", provider="opencode", cost=0)
-        self.add_message(model="claude-sonnet", provider="anthropic", cost=9.0)
-        self.add_message(model="outside", cost=100,
-                         when=dt.datetime(2026, 10, 1, 12, 0, tzinfo=dt.timezone.utc))
-        self.add_message(model="user-row", kind="user", cost=5.0)
-        self.add_message(model="null-cost", cost=None)
-        self.add_message(model="no-tokens", cost=0.2, tokens={},
-                         when=dt.datetime(2026, 10, 20, 9, 0, tzinfo=dt.timezone.utc))
-
-        report = self.collect(fetch=lambda _key: ok_raw())
-        ids = {model["id"]: model for model in report["models"]}
-        self.assertIn("deepseek-v4.1-flash", ids)
-        self.assertIn("nemotron-3.5-super-vl-free", ids)
-        self.assertIn("no-tokens", ids)
-        self.assertNotIn("claude-sonnet", ids)
-        self.assertNotIn("outside", ids)
-        self.assertNotIn("user-row", ids)
-        self.assertNotIn("null-cost", ids)
-        self.assertEqual(ids["deepseek-v4.1-flash"]["messages"], 2)
-        self.assertAlmostEqual(ids["deepseek-v4.1-flash"]["cost"], 2.0, places=4)
-        self.assertTrue(ids["nemotron-3.5-super-vl-free"]["free"])
-        self.assertEqual(ids["no-tokens"]["tokens"]["input"], 0)
-        self.assertEqual(report["localUpdatedAt"], "2026-10-20T09:00:00+00:00")
-
-        days = {row["date"]: row for row in report["daily"]}
-        self.assertEqual(days["2026-10-19"]["messages"], 2)
-        self.assertEqual(days["2026-10-20"]["messages"], 2)
-        self.assertAlmostEqual(days["2026-10-19"]["cost"], 1.5, places=4)
-
-    def test_v1_model_aggregation(self):
-        self.write_auth()
-        self.write_v1_db()
-        report = self.collect(fetch=lambda _key: ok_raw())
-        ids = {model["id"]: model for model in report["models"]}
-        self.assertIn("deepseek-v4.1-flash", ids)
-        self.assertEqual(ids["deepseek-v4.1-flash"]["messages"], 1)
-        self.assertAlmostEqual(ids["deepseek-v4.1-flash"]["cost"], 1.25, places=4)
-        self.assertEqual(ids["deepseek-v4.1-flash"]["tokens"]["cacheRead"], 30)
-        self.assertEqual(report["localUpdatedAt"], "2026-10-19T12:00:00+00:00")
 
 
 class RunwayTests(unittest.TestCase):

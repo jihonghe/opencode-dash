@@ -15,8 +15,6 @@ var DEFAULTS = {
   critRemaining: 10,
   notifyEnabled: true,
   notifyReset: false,
-  showModelDetail: true,
-  renewOverride: "",
   planLabel: "OpenCode Go"
 }
 
@@ -51,9 +49,7 @@ function settingsWithDefaults(settings) {
   if (["remaining", "used"].indexOf(out.percentMode) === -1) out.percentMode = "remaining"
   out.notifyEnabled = boolValue(out.notifyEnabled, true)
   out.notifyReset = boolValue(out.notifyReset, false)
-  out.showModelDetail = boolValue(out.showModelDetail, true)
   out.planLabel = String(out.planLabel || "OpenCode Go")
-  out.renewOverride = String(out.renewOverride || "")
   return out
 }
 
@@ -233,166 +229,6 @@ function fmtUpdated(iso) {
   return pad2(date.getHours()) + ":" + pad2(date.getMinutes())
 }
 
-function fmtDateTime(iso) {
-  if (!iso) return "\u2014"
-  var date = new Date(iso)
-  if (isNaN(date.getTime())) return "\u2014"
-  return pad2(date.getMonth() + 1) + "-" + pad2(date.getDate())
-    + " " + pad2(date.getHours()) + ":" + pad2(date.getMinutes())
-}
-
-function fmtCompact(value) {
-  var number = Number(value) || 0
-  var absolute = Math.abs(number)
-  if (absolute >= 1e9) return (number / 1e9).toFixed(1) + "B"
-  if (absolute >= 1e6) return (number / 1e6).toFixed(1) + "M"
-  if (absolute >= 1e3) return (number / 1e3).toFixed(1) + "K"
-  return String(Math.round(number))
-}
-
-function fmtCost(value) {
-  var cost = Number(value) || 0
-  if (cost === 0) return "$0"
-  return "$" + cost.toFixed(2)
-}
-
-var PAD = "\u00a0"
-var TOOLTIP_WIDTH = 47
-
-function padEnd(value, width) {
-  var text = String(value)
-  while (text.length < width) text += PAD
-  return text
-}
-
-function padStart(value, width) {
-  var text = String(value)
-  while (text.length < width) text = PAD + text
-  return text
-}
-
-function truncate(value, width) {
-  var text = String(value)
-  if (text.length <= width) return text
-  return text.slice(0, Math.max(1, width - 1)) + "\u2026"
-}
-
-function repeatChar(character, count) {
-  var out = ""
-  for (var i = 0; i < count; i++) out += character
-  return out
-}
-
-function tooltipBlock(lines) {
-  var width = 0
-  for (var i = 0; i < lines.length; i++) width = Math.max(width, lines[i].length)
-  var out = []
-  for (var j = 0; j < lines.length; j++) out.push(padEnd(lines[j], width))
-  return out.join("\n")
-}
-
-function statusDot(window, settings) {
-  if (!window || window.remaining === undefined || window.remaining === null) return "\u2014"
-  var remaining = Number(window.remaining)
-  if (remaining <= settings.critRemaining) return "\u{1F534}"
-  if (remaining <= settings.warnRemaining) return "\u{1F7E1}"
-  return "\u{1F7E2}"
-}
-
-function tooltip(report, settings, nowMs) {
-  var cfg = settingsWithDefaults(settings)
-  if (!report) return "OpenCode Quota"
-  var state = report.state || "no-data"
-  var label = String(cfg.planLabel || "OpenCode Go")
-  var title = truncate(label, TOOLTIP_WIDTH)
-  var separator = repeatChar("-", TOOLTIP_WIDTH)
-
-  if (state === "no-key") {
-    return tooltipBlock([
-      title,
-      separator,
-      "Not signed in to OpenCode Go.",
-      "Run OpenCode and sign in."
-    ])
-  }
-  if (state === "auth-expired") {
-    return tooltipBlock([
-      title,
-      separator,
-      "Sign-in expired.",
-      "Run OpenCode to refresh credentials."
-    ])
-  }
-  if (state === "no-data" || state === "error") {
-    var message = state === "error"
-      ? "Could not read quota data."
-      : (report.stale ? "API unavailable and no cached reading." : "Waiting for the first reading.")
-    return tooltipBlock([title, separator, message])
-  }
-
-  var modeLabel = cfg.percentMode === "used" ? "used" : "remaining"
-  title = truncate(label + " - " + modeLabel + (report.stale ? " (cached)" : ""), TOOLTIP_WIDTH)
-
-  var leftHeader = cfg.percentMode === "used" ? "Used" : "Left"
-  var header = padEnd("Win", 3) + "  " + padEnd("St", 2) + "  "
-    + padStart(leftHeader, 5) + "  " + padStart("Resets in", 9) + "  "
-    + padStart("At", 11) + "  " + padStart("Runway", 7)
-  var lines = [title, separator, padEnd(header, TOOLTIP_WIDTH)]
-
-  var names = availableNames(report.windows)
-  for (var i = 0; i < names.length; i++) {
-    var name = names[i]
-    var window = report.windows[name]
-    var resetSeconds = window.resetInSec
-    if (window.resetsAt) {
-      var resetTime = new Date(window.resetsAt).getTime()
-      if (isFinite(resetTime)) {
-        resetSeconds = Math.max(0, Math.round((resetTime - (nowMs || Date.now())) / 1000))
-      }
-    }
-    var runway = report.runway && report.runway[name] ? report.runway[name].seconds : null
-    var runwayText = runway !== null && runway !== undefined ? fmtDuration(runway) : "\u2014"
-    var row = padEnd(windowLabel(name), 3) + "  " + padEnd(statusDot(window, cfg), 2)
-      + "  " + padStart(percentText(window, cfg.percentMode) + "%", 5)
-      + "  " + padStart(fmtDuration(resetSeconds), 9)
-      + "  " + padStart(fmtReset(name, window.resetsAt), 11)
-      + "  " + padStart(runwayText, 7)
-    lines.push(padEnd(row, TOOLTIP_WIDTH))
-  }
-
-  if (cfg.showModelDetail && report.models && report.models.length) {
-    lines.push(separator)
-    lines.push(padEnd("Local usage - this cycle", TOOLTIP_WIDTH))
-    lines.push(padEnd(
-      padEnd("Model", 26) + "  " + padStart("Cost", 5) + "  "
-        + padStart("Msgs", 6) + "  " + padEnd("Free", 4),
-      TOOLTIP_WIDTH
-    ))
-    var limit = Math.min(report.models.length, 3)
-    for (var m = 0; m < limit; m++) {
-      var model = report.models[m]
-      var modelName = truncate(String(model.id || "unknown"), 26)
-      lines.push(padEnd(
-        padEnd(modelName, 26) + "  " + padStart(fmtCost(model.cost), 5) + "  "
-          + padStart(String(model.messages), 6) + "  " + padEnd(model.free ? "yes" : "-", 4),
-        TOOLTIP_WIDTH
-      ))
-    }
-    if (report.models.length > limit) {
-      lines.push(padEnd("+" + (report.models.length - limit) + " more models", TOOLTIP_WIDTH))
-    }
-  }
-
-  lines.push(separator)
-  lines.push(padEnd(
-    report.stale
-      ? "cached at " + fmtUpdated(report.updatedAt) + " (API unavailable)"
-      : "updated " + fmtUpdated(report.updatedAt),
-    TOOLTIP_WIDTH
-  ))
-  return tooltipBlock(lines)
-}
-
 function stateMessage(report) {
   if (!report) return "Waiting for the first reading."
   var state = report.state || "no-data"
@@ -404,29 +240,27 @@ function stateMessage(report) {
   return ""
 }
 
-function trendDaily(daily, mode, nowMs) {
-  var rows = (daily || []).slice().sort(function (a, b) {
-    return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0)
-  })
-  if (mode !== "7d") return rows
-  var now = new Date(nowMs || Date.now())
-  var cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
-  return rows.filter(function (row) {
-    var parts = String(row.date || "").split("-")
-    if (parts.length !== 3) return false
-    var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
-    return date >= cutoff
-  })
-}
-
 function trendSamples(samples, mode, nowMs) {
   var rows = (samples || []).slice()
-  if (mode !== "7d") return rows
-  var cutoff = (nowMs || Date.now()) - 7 * 24 * 3600 * 1000
+  if (mode === "cycle") return rows
+  var horizon = mode === "24h" ? 24 * 3600 * 1000 : 7 * 24 * 3600 * 1000
+  var cutoff = (nowMs || Date.now()) - horizon
   return rows.filter(function (sample) {
     var time = new Date(sample.t).getTime()
     return isFinite(time) && time >= cutoff
   })
+}
+
+function trendReady(samples, minPoints, minSpanSec) {
+  var points = (samples || []).filter(function (sample) {
+    return isFinite(new Date(sample.t).getTime())
+  })
+  minPoints = minPoints || 3
+  minSpanSec = minSpanSec || 3600
+  if (points.length < minPoints) return false
+  var first = new Date(points[0].t).getTime()
+  var last = new Date(points[points.length - 1].t).getTime()
+  return (last - first) / 1000 >= minSpanSec
 }
 
 // ---------------------------------------------------------------- settings
@@ -509,14 +343,9 @@ if (typeof module !== "undefined" && module.exports) {
     fmtDuration: fmtDuration,
     fmtReset: fmtReset,
     fmtUpdated: fmtUpdated,
-    fmtDateTime: fmtDateTime,
-    fmtCompact: fmtCompact,
-    fmtCost: fmtCost,
-    tooltip: tooltip,
-    statusDot: statusDot,
     stateMessage: stateMessage,
-    trendDaily: trendDaily,
     trendSamples: trendSamples,
+    trendReady: trendReady,
     withPending: withPending,
     mergeSettings: mergeSettings,
     prunePending: prunePending,

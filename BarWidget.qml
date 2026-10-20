@@ -91,11 +91,8 @@ BarWidget {
       if (["worst", "all", "month"].indexOf(value) === -1) return false
     } else if (key === "percentMode") {
       if (["remaining", "used"].indexOf(value) === -1) return false
-    } else if (key === "notifyEnabled" || key === "notifyReset" || key === "showModelDetail") {
+    } else if (key === "notifyEnabled" || key === "notifyReset") {
       value = !!value
-    } else if (key === "renewOverride") {
-      value = String(value || "").trim()
-      if (value && isNaN(new Date(value).getTime())) return false
     } else if (key === "planLabel") {
       value = String(value || "").trim().slice(0, 40) || "OpenCode Go"
     } else {
@@ -118,7 +115,7 @@ BarWidget {
     for (var changed in changes) persistSetting(changed, changes[changed])
 
     if (key === "warnRemaining" || key === "critRemaining" || key === "notifyEnabled"
-        || key === "notifyReset" || key === "renewOverride") {
+        || key === "notifyReset") {
       refresh(false)
     }
     return true
@@ -210,7 +207,6 @@ BarWidget {
     ]
     if (!localSettings.notifyEnabled) args.push("--no-alerts")
     if (localSettings.notifyReset) args.push("--notify-reset")
-    if (localSettings.renewOverride) args.push("--renew-override", String(localSettings.renewOverride))
     if (force) args.push("--force")
 
     var fixture = setting("debugFixture", "")
@@ -247,8 +243,6 @@ BarWidget {
         updatedAt: "",
         windows: {},
         runway: {},
-        models: [],
-        daily: [],
         samples: [],
         alerts: []
       }

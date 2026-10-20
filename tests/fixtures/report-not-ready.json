@@ -1,0 +1,53 @@
+{
+  "state": "ok",
+  "stale": false,
+  "updatedAt": "2026-10-21T03:00:00+08:00",
+  "windows": {
+    "rolling": {
+      "available": true,
+      "percent": 7,
+      "remaining": 93,
+      "resetsAt": "2026-10-20T23:00:00Z",
+      "resetInSec": 7200
+    },
+    "weekly": {
+      "available": true,
+      "percent": 24,
+      "remaining": 76,
+      "resetsAt": "2026-10-26T00:00:00Z",
+      "resetInSec": 400000
+    },
+    "monthly": {
+      "available": true,
+      "percent": 15,
+      "remaining": 85,
+      "resetsAt": "2026-11-17T14:35:30Z",
+      "resetInSec": 2400000
+    }
+  },
+  "runway": {
+    "rolling": {
+      "seconds": null
+    },
+    "weekly": {
+      "seconds": null
+    },
+    "monthly": {
+      "seconds": null
+    }
+  },
+  "samples": [
+    {
+      "t": "2026-10-21T02:55:00Z",
+      "rolling": 7,
+      "weekly": 24,
+      "monthly": 15
+    },
+    {
+      "t": "2026-10-21T03:00:00Z",
+      "rolling": 7,
+      "weekly": 24,
+      "monthly": 15
+    }
+  ]
+}

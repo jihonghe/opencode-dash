@@ -36,6 +36,7 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property var windows: report && report.windows ? report.windows : ({})
   readonly property string stateText: Model.stateMessage(report)
+  readonly property bool trendReady: Model.trendReady(report ? report.samples : [], 3, 3600)
 
   function openSettings() {
     settingsMode = true
@@ -230,7 +231,7 @@ Panel {
           }
 
           Item {
-            visible: !root.settingsMode
+            visible: !root.settingsMode && root.trendReady
             width: parent.width
             height: Style.space(24)
 
@@ -246,6 +247,15 @@ Panel {
               anchors.right: parent.right
               anchors.verticalCenter: parent.verticalCenter
               spacing: Style.space(4)
+
+              TrendModeButton {
+                label: "24h"
+                selected: root.trendMode === "24h"
+                foreground: root.foreground
+                accent: root.accent
+                fontFamily: root.fontFamily
+                onClicked: root.trendMode = "24h"
+              }
 
               TrendModeButton {
                 label: "7d"
@@ -268,63 +278,14 @@ Panel {
           }
 
           TrendGraph {
-            visible: !root.settingsMode
+            visible: !root.settingsMode && root.trendReady
             width: parent.width
-            daily: root.report && root.report.daily ? root.report.daily : []
             samples: root.report && root.report.samples ? root.report.samples : []
             mode: root.trendMode
             nowMs: root.nowMs
             foreground: root.foreground
             accent: root.accent
             fontFamily: root.fontFamily
-          }
-
-          Item {
-            visible: !root.settingsMode && root.cfg.showModelDetail
-            width: parent.width
-            height: Math.max(modelsHeader.implicitHeight, localLastText.implicitHeight)
-
-            PanelSectionHeader {
-              id: modelsHeader
-              anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
-              text: "Local usage \u00b7 opencode.db"
-              foreground: root.foreground
-              fontFamily: root.fontFamily
-            }
-
-            Text {
-              id: localLastText
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              text: root.report && root.report.localUpdatedAt
-                ? "last " + Model.fmtDateTime(root.report.localUpdatedAt)
-                : "no local data"
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              textFormat: Text.PlainText
-            }
-          }
-
-          ModelTable {
-            visible: !root.settingsMode && root.cfg.showModelDetail
-            width: parent.width
-            models: root.report && root.report.models ? root.report.models : []
-            foreground: root.foreground
-            accent: root.accent
-            fontFamily: root.fontFamily
-          }
-
-          Text {
-            visible: !root.settingsMode && root.cfg.showModelDetail
-            width: parent.width
-            text: "Only usage written by the OpenCode CLI/TUI is stored in opencode.db. Other clients (for example ZCode) update the API quota but not this database."
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            wrapMode: Text.WordWrap
-            textFormat: Text.PlainText
           }
 
           PanelSeparator {
@@ -335,7 +296,7 @@ Panel {
           Text {
             visible: !root.settingsMode
             width: parent.width
-            text: "Official usage API \u00b7 local model usage from opencode.db"
+            text: "Official usage API \u00b7 account-wide, all clients"
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption

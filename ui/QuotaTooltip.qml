@@ -29,7 +29,15 @@ PopupWindow {
   readonly property var available: Model.availableNames(windows)
   readonly property bool hasWindows: available.length > 0
   readonly property string stateText: Model.stateMessage(report)
-  readonly property var models: report && report.models ? report.models : []
+  readonly property bool showRunway: {
+    if (!report || !report.runway) return false
+    var names = ["rolling", "weekly", "monthly"]
+    for (var i = 0; i < names.length; i++) {
+      var entry = report.runway[names[i]]
+      if (entry && entry.seconds !== null && entry.seconds !== undefined) return true
+    }
+    return false
+  }
 
   color: "transparent"
   implicitWidth: Style.space(424)
@@ -75,9 +83,9 @@ PopupWindow {
   }
 
   function runwayText(name) {
-    if (!report || !report.runway || !report.runway[name]) return "\u2014"
+    if (!report || !report.runway || !report.runway[name]) return ""
     var seconds = report.runway[name].seconds
-    return seconds === null || seconds === undefined ? "\u2014" : Model.fmtDuration(seconds)
+    return seconds === null || seconds === undefined ? "" : Model.fmtDuration(seconds)
   }
 
   anchor {
@@ -215,7 +223,8 @@ PopupWindow {
             textFormat: Text.PlainText
           }
           Text {
-            width: parent.width - Style.space(34) - Style.space(56) - Style.space(70) - 3 * Style.space(8)
+            width: parent.width - Style.space(34) - Style.space(56)
+              - (root.showRunway ? Style.space(70) + 3 * Style.space(8) : 2 * Style.space(8))
             text: "Resets"
             color: root.dim
             font.family: root.fontFamily
@@ -224,6 +233,7 @@ PopupWindow {
             textFormat: Text.PlainText
           }
           Text {
+            visible: root.showRunway
             width: Style.space(70)
             text: "Runway"
             color: root.dim
@@ -269,7 +279,8 @@ PopupWindow {
               textFormat: Text.PlainText
             }
             Text {
-              width: parent.width - Style.space(34) - Style.space(56) - Style.space(70) - 3 * Style.space(8)
+              width: parent.width - Style.space(34) - Style.space(56)
+                - (root.showRunway ? Style.space(70) + 3 * Style.space(8) : 2 * Style.space(8))
               text: parent.avail
                 ? "resets " + Model.fmtReset(modelData, parent.win.resetsAt)
                   + " (" + Model.fmtDuration(root.resetSeconds(parent.win)) + ")"
@@ -281,146 +292,9 @@ PopupWindow {
               textFormat: Text.PlainText
             }
             Text {
+              visible: root.showRunway
               width: Style.space(70)
               text: root.runwayText(modelData)
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              horizontalAlignment: Text.AlignRight
-              textFormat: Text.PlainText
-            }
-          }
-        }
-      }
-
-      Rectangle {
-        visible: root.hasWindows && root.cfg.showModelDetail && root.models.length > 0
-        width: parent.width
-        height: 1
-        color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.12)
-      }
-
-      Item {
-        visible: root.cfg.showModelDetail && root.models.length > 0
-        width: parent.width
-        height: Math.max(localTitle.implicitHeight, localLast.implicitHeight)
-
-        Text {
-          id: localTitle
-          anchors.left: parent.left
-          anchors.verticalCenter: parent.verticalCenter
-          text: "Local usage \u00b7 opencode.db"
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          font.bold: true
-          textFormat: Text.PlainText
-        }
-
-        Text {
-          id: localLast
-          anchors.right: parent.right
-          anchors.verticalCenter: parent.verticalCenter
-          text: root.report && root.report.localUpdatedAt
-            ? "last " + Model.fmtDateTime(root.report.localUpdatedAt)
-            : "no local data"
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          textFormat: Text.PlainText
-        }
-      }
-
-      Column {
-        visible: root.cfg.showModelDetail && root.models.length > 0
-        width: parent.width
-        spacing: Style.space(3)
-
-        Row {
-          width: parent.width
-          spacing: Style.space(6)
-
-          Text {
-            width: parent.width - Style.space(60) - Style.space(60) - Style.space(40) - 3 * Style.space(6)
-            text: "Model"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            font.bold: true
-            textFormat: Text.PlainText
-          }
-          Text {
-            width: Style.space(60)
-            text: "Cost"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            font.bold: true
-            horizontalAlignment: Text.AlignRight
-            textFormat: Text.PlainText
-          }
-          Text {
-            width: Style.space(60)
-            text: "Msgs"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            font.bold: true
-            horizontalAlignment: Text.AlignRight
-            textFormat: Text.PlainText
-          }
-          Text {
-            width: Style.space(40)
-            text: "Free"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            font.bold: true
-            horizontalAlignment: Text.AlignRight
-            textFormat: Text.PlainText
-          }
-        }
-
-        Repeater {
-          model: Math.min(root.models.length, 3)
-
-          delegate: Row {
-            required property int index
-            width: parent.width
-            spacing: Style.space(6)
-
-            readonly property var model: root.models[index]
-
-            Text {
-              width: parent.width - Style.space(60) - Style.space(60) - Style.space(40) - 3 * Style.space(6)
-              text: parent.model ? String(parent.model.id) : ""
-              color: parent.model && parent.model.free ? root.dim : root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              elide: Text.ElideRight
-              textFormat: Text.PlainText
-            }
-            Text {
-              width: Style.space(60)
-              text: parent.model ? Model.fmtCost(parent.model.cost) : ""
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              horizontalAlignment: Text.AlignRight
-              textFormat: Text.PlainText
-            }
-            Text {
-              width: Style.space(60)
-              text: parent.model ? String(parent.model.messages) : ""
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              horizontalAlignment: Text.AlignRight
-              textFormat: Text.PlainText
-            }
-            Text {
-              width: Style.space(40)
-              text: parent.model && parent.model.free ? "yes" : "\u2014"
               color: root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -436,6 +310,14 @@ PopupWindow {
         text: "cached at " + Model.fmtUpdated(root.report ? root.report.updatedAt : "")
           + " (API unavailable)"
         color: root.warnColor
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        textFormat: Text.PlainText
+      }
+
+      Text {
+        text: "Official API \u00b7 all clients"
+        color: root.dim
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption
         textFormat: Text.PlainText

@@ -150,9 +150,9 @@ Item {
       }
 
       Text {
+        visible: root.runwaySeconds !== null && root.runwaySeconds !== undefined
         width: parent.width
-        text: "Runway  " + (root.runwaySeconds !== null && root.runwaySeconds !== undefined
-          ? "~" + Model.fmtDuration(root.runwaySeconds) : "\u2014")
+        text: "Runway  ~" + Model.fmtDuration(root.runwaySeconds)
         color: root.dim
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption

@@ -10,9 +10,8 @@ python3 -m unittest discover -s tests -v
 ```
 
 Coverage includes v2/v1 credential lookup, `no-key` / `auth-expired` / `stale`
-states, cache TTL and forced refresh, ISO reset parsing, subscription cycle,
-v1/v2 model and daily aggregation, null tokens, runway, sample trimming, alert
-deduplication, and key redaction.
+states, cache TTL and forced refresh, ISO reset parsing, official-only report
+fields, runway, sample trimming, alert deduplication, and key redaction.
 
 ## Display helpers
 
@@ -39,5 +38,7 @@ Available fixtures:
 - `report-stale.json` — cached readings, runway values, trend data.
 - `report-no-key.json` — signed-out state with local model usage.
 - `report-auth-expired.json` — expired credentials.
+- `report-not-ready.json` — fewer than 3 samples / no runway; trend and runway
+  must be hidden and the remaining layout must fill the panel/tooltip.
 
 Reload the shell config or restart the shell after changing the fixture.

@@ -20,15 +20,6 @@ Item {
         weekly: { available: true, percent: 20, remaining: 80, resetsAt: "2026-10-26T00:00:00Z", resetInSec: 463280 },
         monthly: { available: true, percent: 14, remaining: 86, resetsAt: "2026-11-17T14:35:30Z", resetInSec: 2416610 }
       },
-      models: [
-        { id: "deepseek-v4.1-flash", messages: 1196, cost: 3.99, free: false },
-        { id: "nemotron-3.5-super-vl-free", messages: 24, cost: 0, free: true }
-      ],
-      daily: [
-        { date: "2026-10-13", messages: 1, cost: 0.1 },
-        { date: "2026-10-14", messages: 2, cost: 0.2 },
-        { date: "2026-10-20", messages: 3, cost: 0.3 }
-      ],
       samples: [
         { t: "2026-10-13T00:00:00Z", monthly: 5 },
         { t: "2026-10-20T00:00:00Z", monthly: 14 }
@@ -96,11 +87,6 @@ Item {
     check("reset rolling", Model.fmtReset("rolling", "2026-10-20T16:08:43Z") === "16:08")
     check("reset weekly", Model.fmtReset("weekly", "2026-10-26T00:00:00Z") === "Mon 00:00")
     check("reset monthly", Model.fmtReset("monthly", "2026-11-17T14:35:30Z") === "11-17 14:35")
-    check("compact", Model.fmtCompact(10710000) === "10.7M")
-    check("datetime", Model.fmtDateTime("2026-10-20T23:44:00Z") === "10-20 23:44")
-    check("cost", Model.fmtCost(3.993) === "$3.99")
-    check("free cost", Model.fmtCost(0) === "$0")
-
     var defaults = Model.settingsWithDefaults({ refreshIntervalSec: 10, warnRemaining: 0, critRemaining: 200 })
     check("clamp refresh", defaults.refreshIntervalSec === 60)
     check("clamp warn", defaults.warnRemaining === 1)
@@ -108,44 +94,22 @@ Item {
     check("default plan", defaults.planLabel === "OpenCode Go")
     check("bool string", Model.settingsWithDefaults({ notifyEnabled: "false" }).notifyEnabled === false)
 
-    var tip = Model.tooltip(report, {})
-    check("tooltip windows", tip.indexOf("5h") !== -1 && tip.indexOf("7d") !== -1
-      && tip.indexOf("80%") !== -1 && tip.indexOf("Win") !== -1)
-    check("tooltip header", tip.indexOf("Resets in") !== -1 && tip.indexOf("At") !== -1
-      && tip.indexOf("Runway") !== -1)
-    check("tooltip local usage", tip.indexOf("Local usage - this cycle") !== -1)
-    check("tooltip model header", tip.indexOf("Model") !== -1 && tip.indexOf("Cost") !== -1
-      && tip.indexOf("Msgs") !== -1 && tip.indexOf("Free") !== -1)
-    check("status dots", Model.statusDot({ remaining: 50 }, { warnRemaining: 20, critRemaining: 10 }) === "🟢"
-      && Model.statusDot({ remaining: 15 }, { warnRemaining: 20, critRemaining: 10 }) === "🟡"
-      && Model.statusDot({ remaining: 5 }, { warnRemaining: 20, critRemaining: 10 }) === "🔴")
-    check("tooltip status column", tip.indexOf("St") !== -1 && tip.indexOf("🟢") !== -1)
-    check("tooltip free column", tip.indexOf("yes") !== -1)
-    check("tooltip updated", tip.indexOf("updated 20:35") !== -1)
-    var tipLines = tip.split("\n")
-    var tipWidth = tipLines[0].length
-    var aligned = true
-    for (var tl = 0; tl < tipLines.length; tl++) if (tipLines[tl].length !== tipWidth) aligned = false
-    check("tooltip aligned", aligned)
-
-    var staleTip = Model.tooltip({ state: "stale", stale: true, updatedAt: "2026-10-20T20:35:00+00:00", windows: report.windows }, {})
-    check("tooltip stale", staleTip.indexOf("cached at 20:35") !== -1 && staleTip.indexOf("(cached)") !== -1)
-    var staleLines = staleTip.split("\n")
-    var staleAligned = true
-    for (var sl = 0; sl < staleLines.length; sl++) if (staleLines[sl].length !== staleLines[0].length) staleAligned = false
-    check("tooltip stale aligned", staleAligned)
-
-    var noKeyTip = Model.tooltip({ state: "no-key" }, {})
-    check("tooltip no key", noKeyTip.indexOf("Not signed in") !== -1)
-    var noKeyLines = noKeyTip.split("\n")
-    var noKeyAligned = true
-    for (var nl = 0; nl < noKeyLines.length; nl++) if (noKeyLines[nl].length !== noKeyLines[0].length) noKeyAligned = false
-    check("tooltip no key aligned", noKeyAligned)
-
-    var now = new Date("2026-10-20T12:00:00Z").getTime()
-    check("trend 7d", Model.trendDaily(report.daily, "7d", now).length === 2)
-    check("trend cycle", Model.trendDaily(report.daily, "cycle", now).length === 3)
-    check("trend samples 7d", Model.trendSamples(report.samples, "7d", now).length === 1)
+    var sampleRows = [
+      { t: "2026-10-12T00:00:00Z", monthly: 1 },
+      { t: "2026-10-19T00:00:00Z", monthly: 2 },
+      { t: "2026-10-20T00:00:00Z", monthly: 3 }
+    ]
+    var now = Date.parse("2026-10-20T12:00:00Z")
+    check("trend 24h", Model.trendSamples(sampleRows, "24h", now).length === 1)
+    check("trend 7d", Model.trendSamples(sampleRows, "7d", now).length === 2)
+    check("trend cycle", Model.trendSamples(sampleRows, "cycle", now).length === 3)
+    check("trend ready", Model.trendReady(sampleRows) === true)
+    check("trend not ready points", Model.trendReady(sampleRows.slice(0, 2)) === false)
+    check("trend not ready span", Model.trendReady([
+      { t: "2026-10-20T10:00:00Z" },
+      { t: "2026-10-20T10:05:00Z" },
+      { t: "2026-10-20T10:10:00Z" }
+    ]) === false)
 
     var config = { layout: { right: [{ id: "jihonghe.opencode-quota", barWindows: "all" }, { id: "omarchy.clock" }] } }
     var saved = Model.savedBarSettings(config, "jihonghe.opencode-quota", { section: "right", index: 0 })

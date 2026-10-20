@@ -14,7 +14,6 @@ Security rules:
 from __future__ import annotations
 
 import argparse
-import calendar
 import datetime as dt
 import fcntl
 import json
@@ -25,7 +24,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 API_URL = "https://opencode.ai/zen/go/v1/usage"
 USER_AGENT = "opencode-quota/1.0"
@@ -107,15 +106,6 @@ def iso_z(value: dt.datetime) -> str:
 
 def local_iso(timestamp: float) -> str:
     return dt.datetime.fromtimestamp(timestamp).astimezone().isoformat(timespec="seconds")
-
-
-def month_before(value: dt.datetime) -> dt.datetime:
-    year, month = value.year, value.month - 1
-    if month == 0:
-        month = 12
-        year -= 1
-    day = min(value.day, calendar.monthrange(year, month)[1])
-    return value.replace(year=year, month=month, day=day)
 
 
 # --------------------------------------------------------------------- key
@@ -506,323 +496,6 @@ def compute_runway(
     return result
 
 
-# --------------------------------------------------------------------- local db
-
-
-def _table_names(con: sqlite3.Connection) -> set:
-    try:
-        return {row[0] for row in con.execute("select name from sqlite_master where type = 'table'")}
-    except sqlite3.Error:
-        return set()
-
-
-def _column_names(con: sqlite3.Connection, table: str) -> set:
-    try:
-        return {row[1] for row in con.execute("pragma table_info(%s)" % table)}
-    except sqlite3.Error:
-        return set()
-
-
-def _time_ms(expression: str) -> str:
-    # v1 databases may store seconds, v2 stores milliseconds.
-    return "case when %s < 100000000000 then %s * 1000 else %s end" % (
-        expression,
-        expression,
-        expression,
-    )
-
-
-def _v2_model_rows(con: sqlite3.Connection, cycle_start_ms: int) -> List[Dict[str, Any]]:
-    sql = """
-        select
-          json_extract(data, '$.model.id') as model,
-          count(*) as messages,
-          coalesce(sum(json_extract(data, '$.tokens.input')), 0) as input,
-          coalesce(sum(json_extract(data, '$.tokens.output')), 0) as output,
-          coalesce(sum(json_extract(data, '$.tokens.reasoning')), 0) as reasoning,
-          coalesce(sum(json_extract(data, '$.tokens.cache.read')), 0) as cache_read,
-          coalesce(sum(json_extract(data, '$.cost')), 0) as cost
-        from session_message
-        where type like '%assistant%'
-          and json_valid(data)
-          and json_extract(data, '$.model.providerID') in ('opencode-go', 'opencode')
-          and json_extract(data, '$.model.id') is not null
-          and json_extract(data, '$.cost') is not null
-          and time_created >= ?
-        group by model
-        order by cost desc, messages desc
-    """
-    return [dict(zip(("model", "messages", "input", "output", "reasoning", "cache_read", "cost"), row))
-            for row in con.execute(sql, (cycle_start_ms,))]
-
-
-def _v2_daily_rows(con: sqlite3.Connection, cycle_start_ms: int) -> List[Dict[str, Any]]:
-    sql = """
-        select
-          date(time_created / 1000, 'unixepoch', 'localtime') as day,
-          count(*) as messages,
-          coalesce(sum(json_extract(data, '$.cost')), 0) as cost
-        from session_message
-        where type like '%assistant%'
-          and json_valid(data)
-          and json_extract(data, '$.model.providerID') in ('opencode-go', 'opencode')
-          and json_extract(data, '$.cost') is not null
-          and time_created >= ?
-        group by day
-        order by day
-    """
-    return [{"date": row[0], "messages": row[1], "cost": row[2]} for row in con.execute(sql, (cycle_start_ms,))]
-
-
-def _v1_expressions(columns: set) -> Optional[Dict[str, str]]:
-    """Map a legacy `message` table onto the fields we need."""
-    time_column = next((name for name in ("time_created", "created_at", "time") if name in columns), None)
-    if time_column is None:
-        return None
-
-    if "data" in columns:
-        model = "coalesce(json_extract(data, '$.modelID'), json_extract(data, '$.model.id'))"
-        provider = "coalesce(json_extract(data, '$.providerID'), json_extract(data, '$.model.providerID'))"
-        cost = "coalesce(json_extract(data, '$.cost'), 0)" if "cost" not in columns else '"cost"'
-        valid = "json_valid(data)"
-    elif "modelID" in columns and "providerID" in columns:
-        model = '"modelID"'
-        provider = '"providerID"'
-        cost = '"cost"' if "cost" in columns else "0"
-        valid = "1"
-    else:
-        return None
-
-    if "tokens" in columns:
-        input_expr = "json_extract(tokens, '$.input')"
-        output_expr = "json_extract(tokens, '$.output')"
-        reasoning_expr = "json_extract(tokens, '$.reasoning')"
-        cache_expr = "coalesce(json_extract(tokens, '$.cache.read'), json_extract(tokens, '$.cacheRead'), 0)"
-    else:
-        input_expr = '"tokens_input"' if "tokens_input" in columns else "0"
-        output_expr = '"tokens_output"' if "tokens_output" in columns else "0"
-        reasoning_expr = '"tokens_reasoning"' if "tokens_reasoning" in columns else "0"
-        cache_expr = (
-            '"tokens_cache_read"'
-            if "tokens_cache_read" in columns
-            else ('"cache_read"' if "cache_read" in columns else "0")
-        )
-
-    if "type" in columns:
-        type_filter = "type like '%assistant%'"
-    elif "role" in columns:
-        type_filter = "role = 'assistant'"
-    else:
-        type_filter = "1"
-
-    return {
-        "time": time_column,
-        "model": model,
-        "provider": provider,
-        "cost": cost,
-        "valid": valid,
-        "input": input_expr,
-        "output": output_expr,
-        "reasoning": reasoning_expr,
-        "cache": cache_expr,
-        "type_filter": type_filter,
-    }
-
-
-def _v1_model_rows(con: sqlite3.Connection, cycle_start_ms: int) -> List[Dict[str, Any]]:
-    columns = _column_names(con, "message")
-    expressions = _v1_expressions(columns)
-    if not expressions:
-        return []
-    time_ms = _time_ms('"%s"' % expressions["time"])
-    sql = """
-        select
-          {model} as model,
-          count(*) as messages,
-          coalesce(sum({input}), 0) as input,
-          coalesce(sum({output}), 0) as output,
-          coalesce(sum({reasoning}), 0) as reasoning,
-          coalesce(sum({cache}), 0) as cache_read,
-          coalesce(sum({cost}), 0) as cost
-        from message
-        where {type_filter}
-          and {valid}
-          and ({provider}) in ('opencode-go', 'opencode')
-          and ({model}) is not null
-          and {time_ms} >= ?
-        group by model
-        order by cost desc, messages desc
-    """.format(time_ms=time_ms, **expressions)
-    try:
-        return [dict(zip(("model", "messages", "input", "output", "reasoning", "cache_read", "cost"), row))
-                for row in con.execute(sql, (cycle_start_ms,))]
-    except sqlite3.Error:
-        return []
-
-
-def _v1_daily_rows(con: sqlite3.Connection, cycle_start_ms: int) -> List[Dict[str, Any]]:
-    columns = _column_names(con, "message")
-    expressions = _v1_expressions(columns)
-    if not expressions:
-        return []
-    time_ms = _time_ms('"%s"' % expressions["time"])
-    sql = """
-        select
-          date(({time_ms}) / 1000, 'unixepoch', 'localtime') as day,
-          count(*) as messages,
-          coalesce(sum({cost}), 0) as cost
-        from message
-        where {type_filter}
-          and {valid}
-          and ({provider}) in ('opencode-go', 'opencode')
-          and ({cost}) is not null
-          and {time_ms} >= ?
-        group by day
-        order by day
-    """.format(time_ms=time_ms, **expressions)
-    try:
-        return [{"date": row[0], "messages": row[1], "cost": row[2]} for row in con.execute(sql, (cycle_start_ms,))]
-    except sqlite3.Error:
-        return []
-
-
-def _normalize_models(rows: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    models: List[Dict[str, Any]] = []
-    for row in rows:
-        cost = float(row.get("cost") or 0)
-        model = {
-            "id": str(row.get("model") or "unknown"),
-            "messages": int(row.get("messages") or 0),
-            "cost": round(cost, 4),
-            "tokens": {
-                "input": int(row.get("input") or 0),
-                "output": int(row.get("output") or 0),
-                "reasoning": int(row.get("reasoning") or 0),
-                "cacheRead": int(row.get("cache_read") or 0),
-            },
-            "free": cost <= 0,
-        }
-        models.append(model)
-    models.sort(key=lambda item: (-item["cost"], -item["messages"], item["id"]))
-    return models
-
-
-def _normalize_daily(rows: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    daily: List[Dict[str, Any]] = []
-    for row in rows:
-        day = row.get("date")
-        if not day:
-            continue
-        daily.append({
-            "date": str(day),
-            "messages": int(row.get("messages") or 0),
-            "cost": round(float(row.get("cost") or 0), 4),
-        })
-    daily.sort(key=lambda item: item["date"])
-    return daily
-
-
-def _v2_latest_ts(con: sqlite3.Connection, cycle_start_ms: int) -> Optional[int]:
-    try:
-        row = con.execute(
-            """
-            select max(time_created)
-            from session_message
-            where type like '%assistant%'
-              and json_valid(data)
-              and json_extract(data, '$.model.providerID') in ('opencode-go', 'opencode')
-              and json_extract(data, '$.cost') is not null
-              and time_created >= ?
-            """,
-            (cycle_start_ms,),
-        ).fetchone()
-        return int(row[0]) if row and row[0] else None
-    except sqlite3.Error:
-        return None
-
-
-def _v1_latest_ts(con: sqlite3.Connection, cycle_start_ms: int) -> Optional[int]:
-    columns = _column_names(con, "message")
-    expressions = _v1_expressions(columns)
-    if not expressions:
-        return None
-    time_ms = _time_ms('"%s"' % expressions["time"])
-    sql = """
-        select max({time_ms})
-        from message
-        where {type_filter}
-          and {valid}
-          and ({provider}) in ('opencode-go', 'opencode')
-          and ({cost}) is not null
-          and {time_ms} >= ?
-    """.format(time_ms=time_ms, **expressions)
-    try:
-        row = con.execute(sql, (cycle_start_ms,)).fetchone()
-        return int(row[0]) if row and row[0] else None
-    except sqlite3.Error:
-        return None
-
-
-def load_local_usage(db_path: Optional[str], cycle_start: dt.datetime) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Optional[int]]:
-    db = _resolve(db_path, default_db_path())
-    if not db.exists():
-        return [], [], None
-    cycle_start_ms = int(cycle_start.timestamp() * 1000)
-    try:
-        con = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
-    except sqlite3.Error:
-        return [], [], None
-    try:
-        con.execute("pragma busy_timeout = 2000")
-        tables = _table_names(con)
-        if "session_message" in tables:
-            return (_normalize_models(_v2_model_rows(con, cycle_start_ms)),
-                    _normalize_daily(_v2_daily_rows(con, cycle_start_ms)),
-                    _v2_latest_ts(con, cycle_start_ms))
-        if "message" in tables:
-            return (_normalize_models(_v1_model_rows(con, cycle_start_ms)),
-                    _normalize_daily(_v1_daily_rows(con, cycle_start_ms)),
-                    _v1_latest_ts(con, cycle_start_ms))
-        return [], [], None
-    except sqlite3.Error:
-        return [], [], None
-    finally:
-        con.close()
-
-
-# --------------------------------------------------------------------- cycle
-
-
-def determine_cycle_start(
-    raw_windows: Optional[Dict[str, Dict[str, Any]]],
-    renew_override: str,
-    cached_cycle_start: Optional[str],
-    now: dt.datetime,
-) -> Tuple[dt.datetime, bool]:
-    """Return (cycle_start, used_override)."""
-    if raw_windows:
-        monthly = raw_windows.get("monthly") or {}
-        if monthly.get("available") and monthly.get("resetsAt"):
-            try:
-                return month_before(parse_iso(monthly["resetsAt"])), False
-            except Exception:
-                pass
-
-    if renew_override:
-        try:
-            return month_before(parse_iso(renew_override)), True
-        except Exception:
-            pass
-
-    if cached_cycle_start:
-        try:
-            return parse_iso(cached_cycle_start), False
-        except Exception:
-            pass
-
-    return now - dt.timedelta(days=30), False
-
-
 # --------------------------------------------------------------------- alerts
 
 
@@ -947,7 +620,6 @@ def collect_report(
     crit: int = 10,
     notify_reset: bool = False,
     no_alerts: bool = False,
-    renew_override: str = "",
     plan_label: str = "OpenCode Go",
     force: bool = False,
     fetch: Optional[Callable[[str], Dict[str, Dict[str, Any]]]] = None,
@@ -966,37 +638,22 @@ def collect_report(
         "planLabel": plan_label,
         "windows": {},
         "runway": {name: {"seconds": None} for name in WINDOWS},
-        "models": [],
-        "daily": [],
         "samples": [],
         "alerts": [],
-        "cycleStart": None,
-        "localUpdatedAt": None,
     }
 
     key, _source = read_key(db_path, auth_path)
     state = load_state(cache_root)
     samples = read_samples(cache_root)
 
-    def finish_local(cycle_start: dt.datetime) -> None:
-        models, daily, latest_ms = load_local_usage(db_path, cycle_start)
-        report["models"] = models
-        report["daily"] = daily
-        report["cycleStart"] = iso_z(cycle_start)
-        report["localUpdatedAt"] = local_iso(latest_ms / 1000) if latest_ms else None
-
     if not key:
         report["state"] = "no-key"
-        cycle_start, _ = determine_cycle_start(None, renew_override, state.get("cycleStart"), now)
-        finish_local(cycle_start)
         report["samples"] = _report_samples(samples)
         report["runway"] = compute_runway(samples, {}, now)
         return report
 
     def use_cached(updated_ts: float, stale: bool) -> Dict[str, Any]:
         windows = rehydrate_windows(state.get("windows") or {}, now)
-        cycle_start, _ = determine_cycle_start(None, renew_override, state.get("cycleStart"), now)
-        finish_local(cycle_start)
         report["windows"] = windows
         report["state"] = "stale" if stale else "ok"
         report["stale"] = stale
@@ -1022,8 +679,6 @@ def collect_report(
             if exc.kind == "auth":
                 report["state"] = "auth-expired"
                 report["stale"] = False
-                cycle_start, _ = determine_cycle_start(None, renew_override, state.get("cycleStart"), now)
-                finish_local(cycle_start)
                 report["samples"] = _report_samples(samples)
                 return report
 
@@ -1032,14 +687,10 @@ def collect_report(
 
             report["state"] = "no-data"
             report["stale"] = True
-            cycle_start, _ = determine_cycle_start(None, renew_override, state.get("cycleStart"), now)
-            finish_local(cycle_start)
             report["samples"] = _report_samples(samples)
             return report
 
         windows = build_windows(raw, now)
-        cycle_start, _ = determine_cycle_start(raw, renew_override, state.get("cycleStart"), now)
-        finish_local(cycle_start)
 
         samples = append_sample(cache_root, samples, now, windows)
         runway = compute_runway(samples, windows, now)
@@ -1058,7 +709,6 @@ def collect_report(
             "state": "ok",
             "fetchedAt": int(now.timestamp()),
             "windows": _cache_windows(windows),
-            "cycleStart": iso_z(cycle_start),
         })
         save_state(cache_root, state)
 
@@ -1088,12 +738,8 @@ def fixture_report(path: str) -> Dict[str, Any]:
         "planLabel": parsed.get("planLabel", "OpenCode Go"),
         "windows": parsed.get("windows", {}),
         "runway": parsed.get("runway", {name: {"seconds": None} for name in WINDOWS}),
-        "models": parsed.get("models", []),
-        "daily": parsed.get("daily", []),
         "samples": parsed.get("samples", []),
         "alerts": [],
-        "cycleStart": parsed.get("cycleStart"),
-        "localUpdatedAt": parsed.get("localUpdatedAt"),
     }
     return report
 
@@ -1107,7 +753,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--crit", type=int, default=10, help="critical below this remaining percentage")
     parser.add_argument("--notify-reset", action="store_true", help="emit reset alerts")
     parser.add_argument("--no-alerts", action="store_true", help="do not emit alerts")
-    parser.add_argument("--renew-override", default="", help="ISO renew time used when the API fails")
     parser.add_argument("--plan-label", default="OpenCode Go", help="label echoed in the output")
     parser.add_argument("--db", default="", help="override opencode.db path")
     parser.add_argument("--auth", default="", help="override auth.json path")
@@ -1128,14 +773,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 crit=args.crit,
                 notify_reset=args.notify_reset,
                 no_alerts=args.no_alerts,
-                renew_override=args.renew_override,
                 plan_label=args.plan_label,
                 force=args.force,
             )
         if args.debug:
             sys.stderr.write(
-                "opencode-quota: state=%s windows=%d models=%d\n"
-                % (report.get("state"), len(report.get("windows") or {}), len(report.get("models") or []))
+                "opencode-quota: state=%s windows=%d samples=%d\n"
+                % (report.get("state"), len(report.get("windows") or {}), len(report.get("samples") or []))
             )
         print(json.dumps(
             report,
