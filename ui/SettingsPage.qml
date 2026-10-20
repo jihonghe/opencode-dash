@@ -2,17 +2,33 @@ import QtQuick
 import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
+import "../Model.js" as Model
 
 Column {
   id: root
 
   property var settings: ({})
+  property var report: null
+  property real nowMs: Date.now()
   property color foreground: Commons.Color.foreground
   property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
 
-  readonly property bool editing: planField.activeFocus
   readonly property color dim: Qt.darker(foreground, 1.45)
+  readonly property var monthlyWindow: report && report.windows ? report.windows.monthly : null
+  readonly property int cycleResetIn: {
+    if (!monthlyWindow || !monthlyWindow.resetsAt) return -1
+    var reset = new Date(monthlyWindow.resetsAt).getTime()
+    if (!isFinite(reset)) return -1
+    return Math.max(0, Math.round((reset - nowMs) / 1000))
+  }
+  readonly property string cycleText: {
+    if (!monthlyWindow || !monthlyWindow.resetsAt || cycleResetIn < 0) {
+      return "Current cycle reset time unavailable"
+    }
+    return "Current cycle resets in " + Model.fmtDuration(cycleResetIn)
+      + " (" + Model.fmtReset("monthly", monthlyWindow.resetsAt) + ")"
+  }
 
   signal updateSetting(string key, var value)
   signal done()
@@ -67,20 +83,31 @@ Column {
   }
 
   SettingRow {
-    label: "Plan label"
-    hint: "Shown in the panel header and notifications"
+    label: "Plan"
+    hint: "The API does not report the plan tier; choose your subscription"
     foreground: root.foreground
     fontFamily: root.fontFamily
 
-    TextField {
-      id: planField
+    Dropdown {
       width: parent.width
-      text: String(root.value("planLabel", "OpenCode Go"))
-      placeholderText: "OpenCode Go"
+      value: String(root.value("planLabel", "OpenCode Go"))
+      options: Model.planOptions()
       foreground: root.foreground
       accent: root.accent
-      onEditingFinished: root.updateSetting("planLabel", text)
+      fontFamily: root.fontFamily
+      showLabel: false
+      onChanged: function (newValue) { root.updateSetting("planLabel", newValue) }
     }
+  }
+
+  Text {
+    width: parent.width
+    text: root.cycleText
+    color: root.dim
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.caption
+    wrapMode: Text.WordWrap
+    textFormat: Text.PlainText
   }
 
   PanelSeparator { foreground: root.foreground }

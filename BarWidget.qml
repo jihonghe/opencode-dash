@@ -94,7 +94,8 @@ BarWidget {
     } else if (key === "notifyEnabled" || key === "notifyReset") {
       value = !!value
     } else if (key === "planLabel") {
-      value = String(value || "").trim().slice(0, 40) || "OpenCode Go"
+      if (Model.PLAN_OPTIONS.indexOf(String(value)) === -1) return false
+      value = String(value)
     } else {
       return false
     }

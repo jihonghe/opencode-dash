@@ -92,7 +92,12 @@ Item {
     check("clamp warn", defaults.warnRemaining === 1)
     check("clamp crit", defaults.critRemaining === 1)
     check("default plan", defaults.planLabel === "OpenCode Go")
+    check("valid plan", Model.settingsWithDefaults({ planLabel: "OpenCode Go Plus" }).planLabel === "OpenCode Go Plus")
+    check("invalid plan", Model.settingsWithDefaults({ planLabel: "Custom" }).planLabel === "OpenCode Go")
     check("bool string", Model.settingsWithDefaults({ notifyEnabled: "false" }).notifyEnabled === false)
+    check("plan valid", Model.settingsWithDefaults({ planLabel: "OpenCode Go Plus" }).planLabel === "OpenCode Go Plus")
+    check("plan fallback", Model.settingsWithDefaults({ planLabel: "Custom" }).planLabel === "OpenCode Go")
+    check("plan options", Model.planOptions().join(",") === "OpenCode Go,OpenCode Go Plus")
 
     check("burn rolling", Model.burnText(2.7, "rolling") === "2.7%/h")
     check("burn weekly", Model.burnText(0.97, "weekly") === "23.3%/day")

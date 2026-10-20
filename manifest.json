@@ -95,9 +95,13 @@
       },
       {
         "key": "planLabel",
-        "type": "string",
-        "label": "Plan label",
-        "defaultValue": "OpenCode Go"
+        "type": "enum",
+        "label": "Plan",
+        "defaultValue": "OpenCode Go",
+        "options": [
+          "OpenCode Go",
+          "OpenCode Go Plus"
+        ]
       }
     ]
   }

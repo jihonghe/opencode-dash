@@ -73,11 +73,18 @@ fields.
 | `critRemaining` | integer | `10` | Critical below this remaining percentage |
 | `notifyEnabled` | boolean | `true` | Threshold notifications |
 | `notifyReset` | boolean | `false` | Notify when a period resets |
-| `planLabel` | string | `OpenCode Go` | Label shown in the panel and notifications |
+| `planLabel` | enum | `OpenCode Go` | `OpenCode Go` or `OpenCode Go Plus`; display label only |
 
 The bar uses the official period names: `Rolling`, `Weekly`, and `Monthly`.
 In a vertical bar it uses the short aliases `5h`, `7d`, and `M`, with the
 worst period on two lines (`7d` / `79%`), to stay readable.
+
+OpenCode subscription plans are **OpenCode Go** and **OpenCode Go Plus**.
+**Zen is not a subscription tier**; it is OpenCode's pay-as-you-go console/API
+platform. The API does not report which subscription tier is active, so the
+settings dropdown is a fixed choice; it only changes the display label. The
+settings page also shows the current cycle reset countdown from the official
+`monthly.resetsAt`.
 
 ### Runway
 
@@ -258,10 +265,15 @@ omarchy plugin remove jihonghe.opencode-quota
 | `critRemaining` | integer | `10` | 剩余低于此百分比时严重警告 |
 | `notifyEnabled` | boolean | `true` | 阈值通知 |
 | `notifyReset` | boolean | `false` | 周期重置时通知 |
-| `planLabel` | string | `OpenCode Go` | 面板和通知里的套餐标签 |
+| `planLabel` | enum | `OpenCode Go` | `OpenCode Go` 或 `OpenCode Go Plus`；仅用于显示 |
 
 顶栏使用官方周期名：`Rolling` / `Weekly` / `Monthly`。垂直顶栏为节省宽度使用短标签
 `5h` / `7d` / `M`，并分两行显示最紧周期（`7d` / `79%`）。
+
+OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 不是订阅套餐**，
+它是 OpenCode 的按量计费 console/API 平台。API 不返回当前套餐类型，所以设置里的下拉框
+是固定选项，只影响显示标签；设置页同时显示官方 `monthly.resetsAt` 对应的当前周期重置
+倒计时。
 
 ### Runway
 

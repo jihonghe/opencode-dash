@@ -75,7 +75,6 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: root.settingsMode && settingsView.editing
 
       onCloseRequested: root.close()
       onActivateRequested: if (root.settingsMode) root.settingsMode = false
@@ -265,6 +264,8 @@ Panel {
             visible: root.settingsMode
             width: parent.width
             settings: root.cfg
+            report: root.report
+            nowMs: root.nowMs
             foreground: root.foreground
             accent: root.accent
             fontFamily: root.fontFamily

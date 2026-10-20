@@ -5,7 +5,9 @@
 
 var WINDOW_ORDER = ["rolling", "weekly", "monthly"]
 var WINDOW_LABELS = { rolling: "5h", weekly: "7d", monthly: "M" }
+var PLAN_OPTIONS = ["OpenCode Go", "OpenCode Go Plus"]
 var PERIOD_LABELS = { rolling: "Rolling", weekly: "Weekly", monthly: "Monthly" }
+var PLAN_OPTIONS = ["OpenCode Go", "OpenCode Go Plus"]
 var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 var DEFAULTS = {
@@ -50,8 +52,13 @@ function settingsWithDefaults(settings) {
   if (["remaining", "used"].indexOf(out.percentMode) === -1) out.percentMode = "remaining"
   out.notifyEnabled = boolValue(out.notifyEnabled, true)
   out.notifyReset = boolValue(out.notifyReset, false)
-  out.planLabel = String(out.planLabel || "OpenCode Go")
+  out.planLabel = PLAN_OPTIONS.indexOf(String(out.planLabel)) !== -1
+    ? String(out.planLabel) : "OpenCode Go"
   return out
+}
+
+function planOptions() {
+  return PLAN_OPTIONS.slice()
 }
 
 function windowLabel(name) {
@@ -361,10 +368,12 @@ function savedBarSettings(barConfig, id, location) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     WINDOW_ORDER: WINDOW_ORDER,
+    PLAN_OPTIONS: PLAN_OPTIONS,
     DEFAULTS: DEFAULTS,
     settingsWithDefaults: settingsWithDefaults,
     windowLabel: windowLabel,
     periodLabel: periodLabel,
+    planOptions: planOptions,
     isAvailable: isAvailable,
     availableNames: availableNames,
     worstWindow: worstWindow,
