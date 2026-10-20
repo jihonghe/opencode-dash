@@ -49,6 +49,22 @@ Item {
       monthly: { available: true, percent: 50, remaining: 50 }
     }) === "weekly")
 
+    var segments = Model.barSegments(report, { barWindows: "all" })
+    var segmentText = ""
+    for (var si = 0; si < segments.length; si++) segmentText += segments[si].text
+    check("bar segments all", segmentText === "5h 98% \u00b7 7d 80% \u00b7 M 86%")
+    check("bar segment label uncolored", segments[0].tone === "none")
+    check("bar segment percentage colored", segments[1].tone === "normal" && segments[1].text === "98%")
+
+    var warnSegments = Model.barSegments({
+      state: "ok", windows: {
+        rolling: { available: true, percent: 85, remaining: 15 },
+        weekly: { available: true, percent: 20, remaining: 80 },
+        monthly: { available: true, percent: 14, remaining: 86 }
+      }
+    }, { barWindows: "worst" })
+    check("bar segment warn", warnSegments[1].text === "15%" && warnSegments[1].tone === "warn")
+
     var critical = sampleReport()
     critical.windows.monthly.percent = 91
     critical.windows.monthly.remaining = 9
@@ -70,6 +86,7 @@ Item {
     var vertical = Model.verticalParts(report, {})
     check("vertical label", vertical.label === "7d")
     check("vertical value", vertical.value === "80%")
+    check("vertical tone", vertical.tone === "normal")
 
     check("duration hours", Model.fmtDuration(14923) === "4h 8m")
     check("duration minutes", Model.fmtDuration(90) === "1m")

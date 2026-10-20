@@ -1,0 +1,424 @@
+import QtQuick
+import Quickshell
+import qs.Commons
+import qs.Commons as Commons
+import qs.Ui
+import "../Model.js" as Model
+
+// Hover card for the OpenCode Quota bar widget. The bar's shared tooltip is
+// plain monochrome text, so this popup renders its own rows and can color the
+// percentage itself.
+PopupWindow {
+  id: root
+
+  property Item anchorItem: null
+  property QtObject bar: null
+  property var report: null
+  property var settings: ({})
+  property bool shown: false
+  property color foreground: Commons.Color.tooltip.text
+  property color okColor: "#9ece6a"
+  property color warnColor: "#e8a33d"
+  property color critColor: Commons.Color.urgent
+  property string fontFamily: Style.font.family
+  property real nowMs: Date.now()
+
+  readonly property var cfg: Model.settingsWithDefaults(settings)
+  readonly property color dim: Qt.darker(foreground, 1.45)
+  readonly property var windows: report && report.windows ? report.windows : ({})
+  readonly property var available: Model.availableNames(windows)
+  readonly property bool hasWindows: available.length > 0
+  readonly property string stateText: Model.stateMessage(report)
+  readonly property var models: report && report.models ? report.models : []
+
+  color: "transparent"
+  implicitWidth: Style.space(424)
+  implicitHeight: bubble.implicitHeight
+
+  property bool revealed: false
+  visible: revealed && anchorItem !== null
+
+  onShownChanged: {
+    if (shown) revealTimer.restart()
+    else {
+      revealTimer.stop()
+      revealed = false
+    }
+  }
+
+  Timer {
+    id: revealTimer
+    interval: 350
+    repeat: false
+    onTriggered: root.revealed = root.shown
+  }
+
+  Timer {
+    interval: 30000
+    running: root.revealed
+    repeat: true
+    onTriggered: root.nowMs = Date.now()
+  }
+
+  function toneColor(level) {
+    if (level === "crit") return critColor
+    if (level === "warn") return warnColor
+    if (level === "normal") return okColor
+    return foreground
+  }
+
+  function resetSeconds(window) {
+    if (!window || !window.resetsAt) return 0
+    var reset = new Date(window.resetsAt).getTime()
+    if (isNaN(reset)) return 0
+    return Math.max(0, Math.round((reset - nowMs) / 1000))
+  }
+
+  function runwayText(name) {
+    if (!report || !report.runway || !report.runway[name]) return "\u2014"
+    var seconds = report.runway[name].seconds
+    return seconds === null || seconds === undefined ? "\u2014" : Model.fmtDuration(seconds)
+  }
+
+  anchor {
+    id: tipAnchor
+    window: root.anchorItem && root.anchorItem.QsWindow ? root.anchorItem.QsWindow.window : null
+    adjustment: PopupAdjustment.Slide
+    edges: Edges.Top | Edges.Left
+    gravity: Edges.Bottom | Edges.Right
+    rect.width: 1
+    rect.height: 1
+    onAnchoring: root.reposition()
+  }
+
+  function reposition() {
+    if (!anchorItem || !tipAnchor.window) return
+    var position = bar ? String(bar.position) : "top"
+    var popupWidth = implicitWidth
+    var popupHeight = implicitHeight
+    var localX = anchorItem.width / 2 - popupWidth / 2
+    var localY = anchorItem.height + 6
+
+    if (position === "bottom") {
+      localY = -popupHeight - 6
+    } else if (position === "left") {
+      localX = anchorItem.width + 6
+      localY = anchorItem.height / 2 - popupHeight / 2
+    } else if (position === "right") {
+      localX = -popupWidth - 6
+      localY = anchorItem.height / 2 - popupHeight / 2
+    }
+
+    var point = tipAnchor.window.contentItem.mapFromItem(anchorItem, localX, localY)
+    tipAnchor.rect.x = Math.round(point.x)
+    tipAnchor.rect.y = Math.round(point.y)
+  }
+
+  onImplicitHeightChanged: if (revealed) Qt.callLater(reposition)
+  onRevealedChanged: if (revealed) Qt.callLater(reposition)
+
+  Connections {
+    target: root.bar
+    function onPositionChanged() { if (root.revealed) Qt.callLater(root.reposition) }
+  }
+
+  BorderSurface {
+    id: bubble
+    width: root.implicitWidth
+    implicitHeight: content.implicitHeight + Style.spacing.popupPadding * 2
+    color: Commons.Color.tooltip.background
+    borderSpec: Border.surfaceSpec("tooltip", "border", Commons.Color.tooltip.border, 1)
+    radius: Style.cornerRadius
+
+    Column {
+      id: content
+      x: Style.spacing.popupPadding
+      y: Style.spacing.popupPadding
+      width: bubble.width - Style.spacing.popupPadding * 2
+      spacing: Style.space(5)
+
+      Item {
+        width: parent.width
+        height: Math.max(title.implicitHeight, updated.implicitHeight)
+
+        Text {
+          id: title
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          width: parent.width - (updated.visible ? updated.implicitWidth + Style.space(8) : 0)
+          text: root.cfg.planLabel + " \u00b7 "
+            + (root.cfg.percentMode === "used" ? "used" : "remaining")
+          elide: Text.ElideRight
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          font.bold: true
+          textFormat: Text.PlainText
+        }
+
+        Text {
+          id: updated
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          text: root.report ? "updated " + Model.fmtUpdated(root.report.updatedAt) : ""
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          textFormat: Text.PlainText
+        }
+      }
+
+      Text {
+        visible: root.stateText !== ""
+        width: parent.width
+        text: root.stateText
+        color: root.report && root.report.stale ? root.warnColor : root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        wrapMode: Text.WordWrap
+        textFormat: Text.PlainText
+      }
+
+      Rectangle {
+        visible: root.hasWindows
+        width: parent.width
+        height: 1
+        color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.12)
+      }
+
+      Column {
+        visible: root.hasWindows
+        width: parent.width
+        spacing: Style.space(3)
+
+        Row {
+          width: parent.width
+          spacing: Style.space(8)
+
+          Text {
+            width: Style.space(34)
+            text: "Window"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            textFormat: Text.PlainText
+          }
+          Text {
+            width: Style.space(56)
+            text: root.cfg.percentMode === "used" ? "Used" : "Left"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            horizontalAlignment: Text.AlignRight
+            textFormat: Text.PlainText
+          }
+          Text {
+            width: parent.width - Style.space(34) - Style.space(56) - Style.space(70) - 3 * Style.space(8)
+            text: "Resets"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            textFormat: Text.PlainText
+          }
+          Text {
+            width: Style.space(70)
+            text: "Runway"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            horizontalAlignment: Text.AlignRight
+            textFormat: Text.PlainText
+          }
+        }
+
+        Repeater {
+          model: ["rolling", "weekly", "monthly"]
+
+          delegate: Row {
+            required property string modelData
+            width: parent.width
+            spacing: Style.space(8)
+
+            readonly property var win: root.windows[modelData] ? root.windows[modelData] : ({})
+            readonly property bool avail: Model.isAvailable(win)
+            readonly property string level: Model.windowLevel(win, root.cfg)
+
+            Text {
+              width: Style.space(34)
+              text: Model.windowLabel(modelData)
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              textFormat: Text.PlainText
+            }
+            Text {
+              width: Style.space(56)
+              text: parent.avail
+                ? Model.percentText(parent.win, root.cfg.percentMode) + "%"
+                  + (Number(parent.win.remaining) <= root.cfg.critRemaining ? "!" : "")
+                : "\u2014"
+              color: root.toneColor(parent.level)
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              font.bold: true
+              horizontalAlignment: Text.AlignRight
+              textFormat: Text.PlainText
+            }
+            Text {
+              width: parent.width - Style.space(34) - Style.space(56) - Style.space(70) - 3 * Style.space(8)
+              text: parent.avail
+                ? "resets " + Model.fmtReset(modelData, parent.win.resetsAt)
+                  + " (" + Model.fmtDuration(root.resetSeconds(parent.win)) + ")"
+                : "no data"
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+              textFormat: Text.PlainText
+            }
+            Text {
+              width: Style.space(70)
+              text: root.runwayText(modelData)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              horizontalAlignment: Text.AlignRight
+              textFormat: Text.PlainText
+            }
+          }
+        }
+      }
+
+      Rectangle {
+        visible: root.hasWindows && root.cfg.showModelDetail && root.models.length > 0
+        width: parent.width
+        height: 1
+        color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.12)
+      }
+
+      Text {
+        visible: root.cfg.showModelDetail && root.models.length > 0
+        text: "Local usage \u00b7 this cycle"
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        font.bold: true
+        textFormat: Text.PlainText
+      }
+
+      Column {
+        visible: root.cfg.showModelDetail && root.models.length > 0
+        width: parent.width
+        spacing: Style.space(3)
+
+        Row {
+          width: parent.width
+          spacing: Style.space(6)
+
+          Text {
+            width: parent.width - Style.space(60) - Style.space(60) - Style.space(40) - 3 * Style.space(6)
+            text: "Model"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            textFormat: Text.PlainText
+          }
+          Text {
+            width: Style.space(60)
+            text: "Cost"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            horizontalAlignment: Text.AlignRight
+            textFormat: Text.PlainText
+          }
+          Text {
+            width: Style.space(60)
+            text: "Msgs"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            horizontalAlignment: Text.AlignRight
+            textFormat: Text.PlainText
+          }
+          Text {
+            width: Style.space(40)
+            text: "Free"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            horizontalAlignment: Text.AlignRight
+            textFormat: Text.PlainText
+          }
+        }
+
+        Repeater {
+          model: Math.min(root.models.length, 3)
+
+          delegate: Row {
+            required property int index
+            width: parent.width
+            spacing: Style.space(6)
+
+            readonly property var model: root.models[index]
+
+            Text {
+              width: parent.width - Style.space(60) - Style.space(60) - Style.space(40) - 3 * Style.space(6)
+              text: parent.model ? String(parent.model.id) : ""
+              color: parent.model && parent.model.free ? root.dim : root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+              textFormat: Text.PlainText
+            }
+            Text {
+              width: Style.space(60)
+              text: parent.model ? Model.fmtCost(parent.model.cost) : ""
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              horizontalAlignment: Text.AlignRight
+              textFormat: Text.PlainText
+            }
+            Text {
+              width: Style.space(60)
+              text: parent.model ? String(parent.model.messages) : ""
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              horizontalAlignment: Text.AlignRight
+              textFormat: Text.PlainText
+            }
+            Text {
+              width: Style.space(40)
+              text: parent.model && parent.model.free ? "yes" : "\u2014"
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              horizontalAlignment: Text.AlignRight
+              textFormat: Text.PlainText
+            }
+          }
+        }
+      }
+
+      Text {
+        visible: root.report && root.report.stale
+        text: "cached at " + Model.fmtUpdated(root.report ? root.report.updatedAt : "")
+          + " (API unavailable)"
+        color: root.warnColor
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        textFormat: Text.PlainText
+      }
+    }
+  }
+}

@@ -139,25 +139,63 @@ function barText(report, settings) {
     + criticalMark(window, cfg)
 }
 
+function barSegments(report, settings) {
+  var cfg = settingsWithDefaults(settings)
+  function noData() { return [{ text: "\u2014", tone: "none" }] }
+  if (isNoData(report)) return noData()
+  var names = availableNames(report.windows)
+  if (!names.length) return noData()
+
+  function windowSegments(name) {
+    var window = report.windows[name]
+    var suffix = "%" + (Number(window.remaining) <= cfg.critRemaining ? "!" : "")
+    return [
+      { text: windowLabel(name) + " ", tone: "none" },
+      { text: percentText(window, cfg.percentMode) + suffix, tone: windowLevel(window, cfg) }
+    ]
+  }
+
+  if (cfg.barWindows === "all") {
+    var out = []
+    for (var i = 0; i < names.length; i++) {
+      if (i > 0) out.push({ text: " \u00b7 ", tone: "none" })
+      var parts = windowSegments(names[i])
+      for (var j = 0; j < parts.length; j++) out.push(parts[j])
+    }
+    return out
+  }
+
+  if (cfg.barWindows === "month" && !isAvailable(report.windows.monthly)) return noData()
+  var target = cfg.barWindows === "month" ? "monthly" : worstWindow(report.windows)
+  if (!target) return noData()
+  return windowSegments(target)
+}
+
 function verticalParts(report, settings) {
   var cfg = settingsWithDefaults(settings)
-  if (isNoData(report)) return { label: "\u2014", value: "" }
+  if (isNoData(report)) return { label: "\u2014", value: "", tone: "none" }
   var target = worstWindow(report.windows)
-  if (!target) return { label: "\u2014", value: "" }
+  if (!target) return { label: "\u2014", value: "", tone: "none" }
   var window = report.windows[target]
   return {
     label: windowLabel(target),
-    value: percentText(window, cfg.percentMode) + "%" + criticalMark(window, cfg)
+    value: percentText(window, cfg.percentMode) + "%" + criticalMark(window, cfg),
+    tone: windowLevel(window, cfg)
   }
 }
 
-function statusLevel(report, settings) {
+function windowLevel(window, settings) {
+  if (!isAvailable(window)) return "none"
   var cfg = settingsWithDefaults(settings)
-  var remaining = worstRemaining(report ? report.windows : null)
-  if (remaining === null) return "none"
+  var remaining = Number(window.remaining)
   if (remaining <= cfg.critRemaining) return "crit"
   if (remaining <= cfg.warnRemaining) return "warn"
   return "normal"
+}
+
+function statusLevel(report, settings) {
+  var name = worstWindow(report ? report.windows : null)
+  return name ? windowLevel(report.windows[name], settings) : "none"
 }
 
 function pad2(value) {
@@ -288,7 +326,7 @@ function tooltip(report, settings, nowMs) {
   title = truncate(label + " - " + modeLabel + (report.stale ? " (cached)" : ""), TOOLTIP_WIDTH)
 
   var leftHeader = cfg.percentMode === "used" ? "Used" : "Left"
-  var header = padEnd("St", 2) + "  " + padEnd("Win", 3) + "  "
+  var header = padEnd("Win", 3) + "  " + padEnd("St", 2) + "  "
     + padStart(leftHeader, 5) + "  " + padStart("Resets in", 9) + "  "
     + padStart("At", 11) + "  " + padStart("Runway", 7)
   var lines = [title, separator, padEnd(header, TOOLTIP_WIDTH)]
@@ -306,7 +344,7 @@ function tooltip(report, settings, nowMs) {
     }
     var runway = report.runway && report.runway[name] ? report.runway[name].seconds : null
     var runwayText = runway !== null && runway !== undefined ? fmtDuration(runway) : "\u2014"
-    var row = padEnd(statusDot(window, cfg), 2) + "  " + padEnd(windowLabel(name), 3)
+    var row = padEnd(windowLabel(name), 3) + "  " + padEnd(statusDot(window, cfg), 2)
       + "  " + padStart(percentText(window, cfg.percentMode) + "%", 5)
       + "  " + padStart(fmtDuration(resetSeconds), 9)
       + "  " + padStart(fmtReset(name, window.resetsAt), 11)
@@ -452,10 +490,12 @@ if (typeof module !== "undefined" && module.exports) {
     isAvailable: isAvailable,
     availableNames: availableNames,
     worstWindow: worstWindow,
+    windowLevel: windowLevel,
     worstRemaining: worstRemaining,
     isNoData: isNoData,
     percentText: percentText,
     barText: barText,
+    barSegments: barSegments,
     verticalParts: verticalParts,
     statusLevel: statusLevel,
     fmtDuration: fmtDuration,

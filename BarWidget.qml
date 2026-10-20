@@ -5,6 +5,7 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
+import "ui"
 
 BarWidget {
   id: root
@@ -30,22 +31,22 @@ BarWidget {
     return Model.savedBarSettings(config, moduleName, locateSelf())
   }
 
-  readonly property string horizontalText: Model.barText(report, localSettings)
+  readonly property var horizontalSegments: Model.barSegments(report, localSettings)
   readonly property var verticalParts: Model.verticalParts(report, localSettings)
-  readonly property string level: Model.statusLevel(report, localSettings)
-  readonly property bool tooltipHovered: visible && opacity > 0 && mouseArea.containsMouse
+  readonly property real displayOpacity: report && report.stale ? 0.55 : 1.0
+  readonly property color okColor: toneColor("normal")
+  readonly property color warnColor: toneColor("warn")
+  readonly property color critColor: toneColor("crit")
 
-  readonly property color displayColor: {
+  function toneColor(tone) {
     if (!bar) return Commons.Color.foreground
     var background = bar.background || Commons.Color.background
     var luminance = 0.2126 * background.r + 0.7152 * background.g + 0.0722 * background.b
-    if (level === "crit") return bar.urgent || Commons.Color.urgent
-    if (level === "warn") return luminance > 0.5 ? "#a35f00" : "#e8a33d"
-    if (level === "normal") return luminance > 0.5 ? "#2e7d32" : "#9ece6a"
+    if (tone === "crit") return bar.urgent || Commons.Color.urgent
+    if (tone === "warn") return luminance > 0.5 ? "#a35f00" : "#e8a33d"
+    if (tone === "normal") return luminance > 0.5 ? "#2e7d32" : "#9ece6a"
     return bar.barForeground || bar.foreground || Commons.Color.foreground
   }
-
-  readonly property real displayOpacity: report && report.stale ? 0.55 : 1.0
 
   // ------------------------------------------------------------- lifecycle
 
@@ -73,13 +74,6 @@ BarWidget {
   function syncSettings() {
     var saved = Model.withPending(savedEntry || {}, pendingSettings)
     localSettings = Model.settingsWithDefaults(Model.mergeSettings(settings, saved))
-  }
-
-  onReportChanged: {
-    if (hovered && bar) bar.showTooltip(root, Model.tooltip(report, localSettings))
-  }
-  onLocalSettingsChanged: {
-    if (hovered && bar) bar.showTooltip(root, Model.tooltip(report, localSettings))
   }
 
   // ------------------------------------------------------------- settings
@@ -332,28 +326,37 @@ BarWidget {
 
   // ------------------------------------------------------------- display
 
-  Text {
+  Row {
     id: horizontal
     visible: !root.vertical
     anchors.centerIn: parent
-    text: root.horizontalText
-    color: root.displayColor
+    spacing: 0
     opacity: root.displayOpacity
-    font.family: root.bar ? root.bar.fontFamily : Style.font.family
-    font.pixelSize: Style.font.body
-    textFormat: Text.PlainText
+
+    Repeater {
+      model: root.horizontalSegments
+
+      delegate: Text {
+        required property var modelData
+        text: modelData.text
+        color: root.toneColor(modelData.tone)
+        font.family: root.bar ? root.bar.fontFamily : Style.font.family
+        font.pixelSize: Style.font.body
+        textFormat: Text.PlainText
+      }
+    }
   }
 
   Column {
     visible: root.vertical
     anchors.centerIn: parent
     spacing: 0
+    opacity: root.displayOpacity
 
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
       text: root.verticalParts.label
-      color: root.displayColor
-      opacity: root.displayOpacity
+      color: root.toneColor("none")
       font.family: root.bar ? root.bar.fontFamily : Style.font.family
       font.pixelSize: Style.font.caption
       textFormat: Text.PlainText
@@ -362,8 +365,7 @@ BarWidget {
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
       text: root.verticalParts.value
-      color: root.displayColor
-      opacity: root.displayOpacity
+      color: root.toneColor(root.verticalParts.tone)
       font.family: root.bar ? root.bar.fontFamily : Style.font.family
       font.pixelSize: Style.font.bodySmall
       textFormat: Text.PlainText
@@ -383,19 +385,13 @@ BarWidget {
       else if (mouse.button === Qt.MiddleButton) root.refresh(true)
     }
 
-    onEntered: {
-      root.hovered = true
-      if (root.bar) root.bar.showTooltip(root, Model.tooltip(root.report, root.localSettings))
-    }
-    onExited: {
-      root.hovered = false
-      if (root.bar) root.bar.hideTooltip(root)
-    }
+    onEntered: root.hovered = true
+    onExited: root.hovered = false
   }
 
   implicitWidth: root.vertical ? barSize : horizontal.implicitWidth + Style.space(16)
   implicitHeight: root.vertical
-    ? Math.max(barSize, verticalParts.value === "" ? barSize : Style.font.caption + Style.font.bodySmall + Style.space(2))
+    ? Math.max(barSize, Style.font.caption + Style.font.bodySmall + Style.space(2))
     : barSize
 
   QuotaPanel {
@@ -406,5 +402,17 @@ BarWidget {
     report: root.report
     onUpdateSetting: function (key, value) { root.updateSetting(key, value) }
     onRefreshRequested: root.refresh(true)
+  }
+
+  QuotaTooltip {
+    anchorItem: root
+    bar: root.bar
+    report: root.report
+    settings: root.localSettings
+    shown: root.hovered && !panel.opened
+    okColor: root.okColor
+    warnColor: root.warnColor
+    critColor: root.critColor
+    fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
   }
 }
