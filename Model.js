@@ -211,7 +211,7 @@ function fmtCost(value) {
 }
 
 var PAD = "\u00a0"
-var TOOLTIP_WIDTH = 41
+var TOOLTIP_WIDTH = 43
 
 function padEnd(value, width) {
   var text = String(value)
@@ -281,7 +281,7 @@ function tooltip(report, settings, nowMs) {
 
   var leftHeader = cfg.percentMode === "used" ? "Used" : "Left"
   var header = padEnd("Win", 3) + "  " + padStart(leftHeader, 5) + "  "
-    + padStart("Resets in", 9) + "  " + padEnd("At", 11)
+    + padStart("Resets in", 9) + "  " + padStart("At", 11)
   var lines = [title, separator, padEnd(header, TOOLTIP_WIDTH)]
 
   var names = availableNames(report.windows)
@@ -298,7 +298,7 @@ function tooltip(report, settings, nowMs) {
     var row = padEnd(windowLabel(name), 3)
       + "  " + padStart(percentText(window, cfg.percentMode) + "%", 5)
       + "  " + padStart(fmtDuration(resetSeconds), 9)
-      + "  " + padEnd(fmtReset(name, window.resetsAt), 11)
+      + "  " + padStart(fmtReset(name, window.resetsAt), 11)
     lines.push(padEnd(row, TOOLTIP_WIDTH))
   }
 
@@ -306,17 +306,17 @@ function tooltip(report, settings, nowMs) {
     lines.push(separator)
     lines.push(padEnd("Local usage - this cycle", TOOLTIP_WIDTH))
     lines.push(padEnd(
-      padEnd("Model", 22) + "  " + padStart("Cost", 5) + "  " + padStart("Msgs", 10),
+      padEnd("Model", 22) + "  " + padStart("Cost", 5) + "  "
+        + padStart("Msgs", 6) + "  " + padEnd("Free", 4),
       TOOLTIP_WIDTH
     ))
     var limit = Math.min(report.models.length, 3)
     for (var m = 0; m < limit; m++) {
       var model = report.models[m]
       var modelName = truncate(String(model.id || "unknown"), 22)
-      var messages = String(model.messages) + (model.free ? " (free)" : "")
       lines.push(padEnd(
-        padEnd(modelName, 22) + "  " + padStart(fmtCost(model.cost), 5)
-          + "  " + padStart(messages, 10),
+        padEnd(modelName, 22) + "  " + padStart(fmtCost(model.cost), 5) + "  "
+          + padStart(String(model.messages), 6) + "  " + padEnd(model.free ? "yes" : "-", 4),
         TOOLTIP_WIDTH
       ))
     }
