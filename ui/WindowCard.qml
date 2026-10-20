@@ -9,7 +9,6 @@ Item {
   property string name: "rolling"
   property var window: ({})
   property var settings: ({})
-  property var runwaySeconds: null
   property real nowMs: Date.now()
 
   property color foreground: Commons.Color.foreground
@@ -149,15 +148,6 @@ Item {
         textFormat: Text.PlainText
       }
 
-      Text {
-        visible: root.runwaySeconds !== null && root.runwaySeconds !== undefined
-        width: parent.width
-        text: "Runway  ~" + Model.fmtDuration(root.runwaySeconds)
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-        textFormat: Text.PlainText
-      }
     }
   }
 }

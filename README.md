@@ -20,9 +20,8 @@ any future agent.
 - Status colors: healthy green, remaining ≤ 20% amber, ≤ 10% red with `!`.
 - Only the percentage is colored; the window label and `%` stay in the
   foreground.
-- Panel: three quota windows, reset times/countdowns, runway, and a
-  remaining-percentage trend.
-- Trend ranges: `24h`, `7d`, and `Cycle`; three lines for 5h / 7d / M.
+- Panel: three quota windows, reset times/countdowns, and a Runway table with
+  burn rate, runway, and warn/crit ETAs.
 - Threshold notifications through `notify-send`, deduplicated per window,
   level, and reset time.
 - Settings in the panel and in Setup → Plugins edit the same `shell.json`
@@ -80,20 +79,26 @@ The bar text uses short labels: `5h` (rolling), `7d` (weekly), and `M`
 (subscription month). In a vertical bar the widget shows the worst window as
 two lines (`7d` / `79%`) to stay readable.
 
-### Trend and runway
+### Runway
 
-The official endpoint only returns the **current** percentages. The trend and
-runway are built from samples the plugin records each time it refreshes:
+The official endpoint only returns the **current** percentages. Runway is built
+from samples the plugin records each time it refreshes:
 
-- At least **3 samples** spanning **1 hour** are required.
-- Until then, the trend section and runway values are **not displayed at all**
-  — no `—` placeholders and no "collecting samples" noise.
-- Runway is a slope estimate capped at the next reset. If usage is flat or a
-  window just reset, that window has no runway until enough new samples
-  accumulate.
-- The trend is built from official readings, so it also covers every client.
-- The chart shows how much sample history exists. Early on, 24h / 7d / Cycle
-  can look identical because all samples fit inside the shortest range.
+- At least **3 samples** spanning **1 hour** are required, and the latest
+  sample must be reasonably fresh. Until then, the Runway table is **not
+  displayed at all** — no placeholders.
+- `Burn`: average percentage points per hour (5h) or per day (7d / M).
+- `Runway`: time until the window is exhausted. `Lasts until reset` means the
+  current burn rate will not exhaust it before the window resets.
+- `Warn` / `Crit`: time until the window reaches the configured remaining
+  thresholds. `now` means it is already below, `after reset` means it will not
+  reach the threshold before the window resets.
+- The footer shows the sample basis, e.g.
+  `Based on official API samples · 5h 10m · 106 points`.
+- If usage is flat or a window just reset, that window has no estimate until
+  enough new samples accumulate. The panel hides the whole table when no window
+  has a usable estimate.
+- The estimates use official readings, so they cover every client.
 
 ### Data sources and privacy
 
@@ -129,8 +134,9 @@ cache. Notifications are sent with `notify-send`; no systemd unit is installed.
   sign in to OpenCode Go.
 - **Values look stale**: the API is unreachable; the last successful reading
   is shown dimmed. The panel footer says when it was cached.
-- **No trend or runway**: wait until the plugin has at least 3 samples over
-  1 hour. They appear automatically; nothing is shown before that.
+- **No Runway table**: wait until the plugin has at least 3 samples over
+  1 hour with a fresh latest sample. It appears automatically; nothing is
+  shown before that.
 - **No notifications**: check `notify-send`, your notification daemon, and
   Do Not Disturb. Alerts are deduplicated per window/level/reset.
 - **Check the data layer manually**:
@@ -158,7 +164,7 @@ For UI state tests, add `"debugFixture": "/path/to/tests/fixtures/report-stale.j
 to the widget's `shell.json` entry. The script then returns that fixture
 instead of real data. Available fixtures: `report-stale.json`,
 `report-no-key.json`, `report-auth-expired.json`, and
-`report-not-ready.json` (trend/runway hidden). Remove the setting when done.
+`report-not-ready.json` (Runway table hidden). Remove the setting when done.
 
 ### Credits and license
 
@@ -184,8 +190,8 @@ CLI/TUI、ZCode，以及未来任何 Agent。
 - 默认显示剩余百分比，可在设置里切换为已用。
 - 状态颜色：健康绿色、剩余 ≤ 20% amber、≤ 10% 红色并带 `!`。
 - 只有百分比本身着色，窗口标签和 `%` 保持前景色。
-- 面板：三个额度窗口、重置时间和倒计时、runway、剩余百分比趋势。
-- 趋势范围：`24h` / `7d` / `Cycle`，画 5h / 7d / M 三条线。
+- 面板：三个额度窗口、重置时间和倒计时，以及包含 burn rate、runway 和
+  警告/严重 ETA 的 Runway 表。
 - 阈值通知由 `notify-send` 发送；按“窗口 + 级别 + 重置时间”去重。
 - 面板设置页和 Setup → Plugins 修改同一份 `shell.json` 字段。
 - 明暗主题、top/bottom/left/right 四个方向的顶栏。
@@ -238,18 +244,21 @@ omarchy plugin remove jihonghe.opencode-quota
 顶栏短标签：`5h`（滚动窗口）、`7d`（自然周）、`M`（订阅月）。垂直顶栏只显示
 最紧窗口，分两行显示（`7d` / `79%`），避免文字被截断。
 
-### 趋势与 Runway
+### Runway
 
-官方端点只返回**当前**百分比。趋势和 runway 来自插件每次刷新时记录的采样：
+官方端点只返回**当前**百分比。Runway 来自插件每次刷新时记录的采样：
 
-- 至少需要 **3 个样本**、跨度至少 **1 小时**。
-- 在此之前，趋势区和 runway 值**完全不显示**——没有 `—` 占位，也没有
-  “Collecting samples…” 之类的提示。
-- Runway 是百分比斜率的估算，并封顶到下一次重置；如果用量平稳或窗口刚重置，该
-  窗口暂时没有 runway，直到积累足够的新样本。
-- 趋势来自官方读数，因此同样覆盖所有客户端。
-- 图表下方会显示当前样本历史长度；早期 24h / 7d / Cycle 可能显示同一段数据，
-  因为所有样本都落在最短范围内。
+- 至少需要 **3 个样本**、跨度至少 **1 小时**，且最新样本不能太旧。在此之前，
+  Runway 表**完全不显示**——没有任何占位内容。
+- `Burn`：平均消耗速度；5h 用 `%/h`，7d / M 用 `%/day`。
+- `Runway`：额度耗尽时间。`Lasts until reset` 表示按当前速度不会在重置前用完。
+- `Warn` / `Crit`：距离进入设置里剩余阈值的时间。`now` 表示已经在阈值下，
+  `after reset` 表示重置前不会到达该阈值。
+- 底部显示样本依据，例如
+  `Based on official API samples · 5h 10m · 106 points`。
+- 如果用量平稳或窗口刚重置，该窗口暂时没有估算；所有窗口都没有可用估算时，
+  整张表隐藏。
+- 估算来自官方读数，因此同样覆盖所有客户端。
 
 ### 数据源与隐私
 
@@ -278,8 +287,8 @@ omarchy plugin remove jihonghe.opencode-quota
 - **顶栏显示 `—`**：没有凭据或登录已过期。运行 OpenCode 并重新登录 OpenCode Go。
 - **数值看起来是旧的**：API 不可达，显示上次成功读数并变暗；面板底部会标注缓存
   时间。
-- **没有趋势或 runway**：等插件积累至少 3 个样本、跨度 1 小时，它们会自动出现；
-  在此之前不显示任何占位内容。
+- **没有 Runway 表**：等插件积累至少 3 个样本、跨度 1 小时，且最新样本足够新；
+  满足后会自动出现，在此之前不显示任何占位内容。
 - **没有通知**：检查 `notify-send`、通知守护进程和勿扰模式。通知按窗口/级别/
   重置时间去重。
 - **手动检查数据层**：
@@ -306,7 +315,7 @@ omarchy plugin validate .
 调试界面状态时，可以在 widget 的 `shell.json` entry 里加
 `"debugFixture": "/path/to/tests/fixtures/report-stale.json"`，脚本会直接返回该
 fixture。可用 fixture：`report-stale.json`、`report-no-key.json`、
-`report-auth-expired.json`、`report-not-ready.json`（趋势/runway 隐藏）。用完请删除。
+`report-auth-expired.json`、`report-not-ready.json`（Runway 表隐藏）。用完请删除。
 
 ### 致谢与许可
 

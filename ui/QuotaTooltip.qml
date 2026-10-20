@@ -84,8 +84,8 @@ PopupWindow {
 
   function runwayText(name) {
     if (!report || !report.runway || !report.runway[name]) return ""
-    var seconds = report.runway[name].seconds
-    return seconds === null || seconds === undefined ? "" : Model.fmtDuration(seconds)
+    var window = root.windows[name] || ({})
+    return Model.runwayLabel(report.runway[name].seconds, resetSeconds(window), window.remaining)
   }
 
   anchor {
@@ -224,7 +224,7 @@ PopupWindow {
           }
           Text {
             width: parent.width - Style.space(34) - Style.space(56)
-              - (root.showRunway ? Style.space(70) + 3 * Style.space(8) : 2 * Style.space(8))
+              - (root.showRunway ? Style.space(90) + 3 * Style.space(8) : 2 * Style.space(8))
             text: "Resets"
             color: root.dim
             font.family: root.fontFamily
@@ -234,7 +234,7 @@ PopupWindow {
           }
           Text {
             visible: root.showRunway
-            width: Style.space(70)
+            width: Style.space(90)
             text: "Runway"
             color: root.dim
             font.family: root.fontFamily
@@ -280,7 +280,7 @@ PopupWindow {
             }
             Text {
               width: parent.width - Style.space(34) - Style.space(56)
-                - (root.showRunway ? Style.space(70) + 3 * Style.space(8) : 2 * Style.space(8))
+                - (root.showRunway ? Style.space(90) + 3 * Style.space(8) : 2 * Style.space(8))
               text: parent.avail
                 ? "resets " + Model.fmtReset(modelData, parent.win.resetsAt)
                   + " (" + Model.fmtDuration(root.resetSeconds(parent.win)) + ")"
@@ -293,7 +293,7 @@ PopupWindow {
             }
             Text {
               visible: root.showRunway
-              width: Style.space(70)
+              width: Style.space(90)
               text: root.runwayText(modelData)
               color: root.dim
               font.family: root.fontFamily

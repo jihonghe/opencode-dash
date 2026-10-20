@@ -1,6 +1,6 @@
 # OpenCode Quota — 交接文档（给实现者）
 
-> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势/runway 基于官方 API 采样，样本不足（<3 点或 <1h）时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
+> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Burn / Runway / Warn ETA / Crit ETA），样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
 > 交付对象：**ZCode**（长任务 / goal 模式）

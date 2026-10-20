@@ -240,38 +240,39 @@ function stateMessage(report) {
   return ""
 }
 
-function trendSamples(samples, mode, nowMs, cycleStartMs) {
-  var rows = (samples || []).slice()
-  if (mode === "cycle") {
-    if (!cycleStartMs) return rows
-    return rows.filter(function (sample) {
-      var time = new Date(sample.t).getTime()
-      return isFinite(time) && time >= cycleStartMs
-    })
+function burnText(ratePerHour, windowName) {
+  var rate = Number(ratePerHour)
+  if (!isFinite(rate) || rate <= 0) return ""
+  if (windowName === "rolling") return rate.toFixed(1) + "%/h"
+  return (rate * 24).toFixed(1) + "%/day"
+}
+
+function runwayLabel(seconds, resetInSec, remaining) {
+  if (seconds === null || seconds === undefined) return ""
+  var value = Number(seconds)
+  if (!isFinite(value)) return ""
+  if (remaining !== null && remaining !== undefined && Number(remaining) <= 0) return "Empty"
+  if (resetInSec !== null && resetInSec !== undefined
+      && isFinite(Number(resetInSec)) && value >= Number(resetInSec) - 60) {
+    return "Lasts until reset"
   }
-  var horizon = mode === "24h" ? 24 * 3600 * 1000 : 7 * 24 * 3600 * 1000
-  var cutoff = (nowMs || Date.now()) - horizon
-  return rows.filter(function (sample) {
-    var time = new Date(sample.t).getTime()
-    return isFinite(time) && time >= cutoff
-  })
+  return "~" + fmtDuration(value)
 }
 
-function trendReady(samples, minPoints, minSpanSec) {
-  var points = (samples || []).filter(function (sample) {
-    return isFinite(new Date(sample.t).getTime())
-  })
-  minPoints = minPoints || 3
-  minSpanSec = minSpanSec || 3600
-  if (points.length < minPoints) return false
-  var first = new Date(points[0].t).getTime()
-  var last = new Date(points[points.length - 1].t).getTime()
-  return (last - first) / 1000 >= minSpanSec
+function etaLabel(remaining, threshold, ratePerHour, resetInSec) {
+  if (remaining === null || remaining === undefined
+      || ratePerHour === null || ratePerHour === undefined) return ""
+  var rem = Number(remaining)
+  var rate = Number(ratePerHour)
+  if (!isFinite(rem) || !isFinite(rate) || rate <= 0) return ""
+  if (rem <= Number(threshold)) return "now"
+  var seconds = (rem - Number(threshold)) * 3600 / rate
+  if (resetInSec !== null && resetInSec !== undefined
+      && isFinite(Number(resetInSec)) && seconds >= Number(resetInSec)) {
+    return "after reset"
+  }
+  return "~" + fmtDuration(seconds)
 }
-
-// ---------------------------------------------------------------- settings
-// Adapted from crmne/omastats (MIT) so panel edits and Setup > Plugins edit
-// the same inline shell.json entry without the shell re-injecting stale values.
 
 function withPending(saved, pending) {
   if (!saved) return null
@@ -347,11 +348,12 @@ if (typeof module !== "undefined" && module.exports) {
     verticalParts: verticalParts,
     statusLevel: statusLevel,
     fmtDuration: fmtDuration,
+    burnText: burnText,
+    runwayLabel: runwayLabel,
+    etaLabel: etaLabel,
     fmtReset: fmtReset,
     fmtUpdated: fmtUpdated,
     stateMessage: stateMessage,
-    trendSamples: trendSamples,
-    trendReady: trendReady,
     withPending: withPending,
     mergeSettings: mergeSettings,
     prunePending: prunePending,

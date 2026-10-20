@@ -12,7 +12,6 @@ Panel {
   property Item anchorItem: null
   property var report: null
   property bool settingsMode: false
-  property string trendMode: "7d"
   property real nowMs: Date.now()
 
   signal updateSetting(string key, var value)
@@ -36,16 +35,6 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property var windows: report && report.windows ? report.windows : ({})
   readonly property string stateText: Model.stateMessage(report)
-  readonly property bool trendReady: Model.trendReady(report ? report.samples : [], 3, 3600)
-  readonly property real cycleStartMs: {
-    var reset = report && report.windows && report.windows.monthly ? report.windows.monthly.resetsAt : null
-    if (!reset) return 0
-    var date = new Date(reset)
-    if (isNaN(date.getTime())) return 0
-    date.setUTCMonth(date.getUTCMonth() - 1)
-    return date.getTime()
-  }
-
   function openSettings() {
     settingsMode = true
     open()
@@ -225,8 +214,6 @@ Panel {
                 name: modelData
                 window: root.windows[modelData] ? root.windows[modelData] : ({})
                 settings: root.cfg
-                runwaySeconds: root.report && root.report.runway && root.report.runway[modelData]
-                  ? root.report.runway[modelData].seconds : null
                 nowMs: root.nowMs
                 foreground: root.foreground
                 accent: root.accent
@@ -239,62 +226,21 @@ Panel {
           }
 
           Item {
-            visible: !root.settingsMode && root.trendReady
+            visible: !root.settingsMode && runwayTable.hasRows
             width: parent.width
-            height: Style.space(24)
+            height: visible ? runwayTable.implicitHeight : 0
 
-            PanelSectionHeader {
-              anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
-              text: "Remaining quota"
+            RunwayTable {
+              id: runwayTable
+              width: parent.width
+              report: root.report
+              settings: root.cfg
+              nowMs: root.nowMs
               foreground: root.foreground
+              warnColor: root.warnColor
+              critColor: root.critColor
               fontFamily: root.fontFamily
             }
-
-            Row {
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(4)
-
-              TrendModeButton {
-                label: "24h"
-                selected: root.trendMode === "24h"
-                foreground: root.foreground
-                accent: root.accent
-                fontFamily: root.fontFamily
-                onClicked: root.trendMode = "24h"
-              }
-
-              TrendModeButton {
-                label: "7d"
-                selected: root.trendMode === "7d"
-                foreground: root.foreground
-                accent: root.accent
-                fontFamily: root.fontFamily
-                onClicked: root.trendMode = "7d"
-              }
-
-              TrendModeButton {
-                label: "Cycle"
-                selected: root.trendMode === "cycle"
-                foreground: root.foreground
-                accent: root.accent
-                fontFamily: root.fontFamily
-                onClicked: root.trendMode = "cycle"
-              }
-            }
-          }
-
-          TrendGraph {
-            visible: !root.settingsMode && root.trendReady
-            width: parent.width
-            samples: root.report && root.report.samples ? root.report.samples : []
-            mode: root.trendMode
-            cycleStartMs: root.cycleStartMs
-            nowMs: root.nowMs
-            foreground: root.foreground
-            accent: root.accent
-            fontFamily: root.fontFamily
           }
 
           PanelSeparator {

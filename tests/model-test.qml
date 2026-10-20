@@ -94,24 +94,17 @@ Item {
     check("default plan", defaults.planLabel === "OpenCode Go")
     check("bool string", Model.settingsWithDefaults({ notifyEnabled: "false" }).notifyEnabled === false)
 
-    var sampleRows = [
-      { t: "2026-10-12T00:00:00Z", monthly: 1 },
-      { t: "2026-10-19T00:00:00Z", monthly: 2 },
-      { t: "2026-10-20T00:00:00Z", monthly: 3 }
-    ]
-    var now = Date.parse("2026-10-20T12:00:00Z")
-    check("trend 24h", Model.trendSamples(sampleRows, "24h", now).length === 1)
-    check("trend 7d", Model.trendSamples(sampleRows, "7d", now).length === 2)
-    check("trend cycle", Model.trendSamples(sampleRows, "cycle", now).length === 3)
-    check("trend cycle start", Model.trendSamples(sampleRows, "cycle", now,
-      Date.parse("2026-10-18T12:00:00Z")).length === 2)
-    check("trend ready", Model.trendReady(sampleRows) === true)
-    check("trend not ready points", Model.trendReady(sampleRows.slice(0, 2)) === false)
-    check("trend not ready span", Model.trendReady([
-      { t: "2026-10-20T10:00:00Z" },
-      { t: "2026-10-20T10:05:00Z" },
-      { t: "2026-10-20T10:10:00Z" }
-    ]) === false)
+    check("burn rolling", Model.burnText(2.7, "rolling") === "2.7%/h")
+    check("burn weekly", Model.burnText(0.97, "weekly") === "23.3%/day")
+    check("runway short", Model.runwayLabel(3600, 7200, 50) === "~1h")
+    check("runway capped", Model.runwayLabel(7200, 7200, 50) === "Lasts until reset")
+    check("runway near cap", Model.runwayLabel(7190, 7200, 50) === "Lasts until reset")
+    check("runway empty", Model.runwayLabel(0, 7200, 0) === "Empty")
+    check("runway null", Model.runwayLabel(null, 7200, 50) === "")
+    check("eta", Model.etaLabel(50, 20, 1, 200000) === "~30h")
+    check("eta now", Model.etaLabel(15, 20, 1, 86400) === "now")
+    check("eta after reset", Model.etaLabel(50, 20, 1, 3600) === "after reset")
+    check("eta no rate", Model.etaLabel(50, 20, 0, 3600) === "")
 
     var config = { layout: { right: [{ id: "jihonghe.opencode-quota", barWindows: "all" }, { id: "omarchy.clock" }] } }
     var saved = Model.savedBarSettings(config, "jihonghe.opencode-quota", { section: "right", index: 0 })
