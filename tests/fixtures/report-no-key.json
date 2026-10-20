@@ -1,0 +1,16 @@
+{
+  "state": "no-key",
+  "stale": false,
+  "updatedAt": "2026-10-20T23:00:00+08:00",
+  "windows": {},
+  "runway": {},
+  "models": [
+    { "id": "deepseek-v4.1-flash", "messages": 1251, "cost": 4.01, "tokens": { "input": 10993353, "output": 627511, "reasoning": 1272665, "cacheRead": 401312512 }, "free": false }
+  ],
+  "daily": [
+    { "date": "2026-10-19", "messages": 438, "cost": 1.7839 },
+    { "date": "2026-10-20", "messages": 296, "cost": 1.1061 }
+  ],
+  "samples": [],
+  "cycleStart": null
+}
