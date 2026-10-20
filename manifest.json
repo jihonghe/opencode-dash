@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "local.opencode-quota",
+  "id": "jihonghe.opencode-quota",
   "name": "OpenCode Quota",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "jihonghe",
   "license": "MIT",
   "description": "OpenCode subscription quota in the Omarchy bar: remaining percentages, reset countdowns, runway and per-model usage.",

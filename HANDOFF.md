@@ -132,3 +132,5 @@ opencode-quota/
   docs/            ← 本交接包（可保留）
   tests/
 ```
+
+> 实现说明（2026-10-20）：面板组件实际文件名为 `QuotaPanel.qml`，避免与 `qs.Ui.Panel` 基类同名；面板子组件放在 `ui/`。

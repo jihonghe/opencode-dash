@@ -54,7 +54,7 @@ Column {
     }
     Text {
       width: root.tokensWidth
-      text: "Tokens in/out/think/cache"
+      text: "in/out/think/cache"
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption

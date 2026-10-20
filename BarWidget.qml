@@ -51,27 +51,18 @@ BarWidget {
   // ------------------------------------------------------------- lifecycle
 
   Component.onCompleted: {
-    console.warn("OCQ-WIDGET-LOADED")
     syncSettings()
     ready = true
     refresh(false)
   }
 
   IpcHandler {
-    target: "local.opencode-quota"
+    target: "jihonghe.opencode-quota"
     function toggle(): void { panel.toggle() }
     function open(): void { panel.open() }
     function close(): void { panel.close() }
     function settings(): void { panel.openSettings() }
     function refresh(): string { root.refresh(true); return "ok" }
-    function setSetting(payload: string): string {
-      try {
-        var request = JSON.parse(payload)
-        return root.updateSetting(String(request.key), request.value) ? "ok" : "rejected"
-      } catch (e) {
-        return "error"
-      }
-    }
   }
 
   onSettingsChanged: syncSettings()
@@ -395,7 +386,6 @@ BarWidget {
 
     onEntered: {
       root.hovered = true
-      console.warn("OCQ-HOVER-ENTER")
       if (root.bar) root.bar.showTooltip(root, Model.tooltip(root.report, root.localSettings))
     }
     onExited: {
