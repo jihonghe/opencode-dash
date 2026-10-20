@@ -16,6 +16,7 @@ Item {
   property color accent: Commons.Color.accent
   property color warnColor: "#e8a33d"
   property color critColor: Commons.Color.urgent
+  property color okColor: "#9ece6a"
   property string fontFamily: Style.font.family
 
   readonly property bool available: !!(window && window.available !== false
@@ -28,7 +29,7 @@ Item {
   readonly property string level: !available ? "none"
     : (remaining <= crit ? "crit" : (remaining <= warn ? "warn" : "normal"))
   readonly property color ringColor: level === "crit" ? critColor
-    : (level === "warn" ? warnColor : accent)
+    : (level === "warn" ? warnColor : okColor)
   readonly property color trackColor: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.10)
   readonly property color dim: Qt.darker(foreground, 1.45)
   readonly property string percent: available
@@ -90,7 +91,8 @@ Item {
         anchors.centerIn: parent
         text: root.percent
         color: root.level === "crit" ? root.critColor
-          : (root.level === "warn" ? root.warnColor : root.foreground)
+          : (root.level === "warn" ? root.warnColor
+            : (root.level === "normal" ? root.okColor : root.foreground))
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
         font.bold: true

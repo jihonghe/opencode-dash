@@ -211,7 +211,7 @@ function fmtCost(value) {
 }
 
 var PAD = "\u00a0"
-var TOOLTIP_WIDTH = 43
+var TOOLTIP_WIDTH = 47
 
 function padEnd(value, width) {
   var text = String(value)
@@ -243,6 +243,14 @@ function tooltipBlock(lines) {
   var out = []
   for (var j = 0; j < lines.length; j++) out.push(padEnd(lines[j], width))
   return out.join("\n")
+}
+
+function statusDot(window, settings) {
+  if (!window || window.remaining === undefined || window.remaining === null) return "\u2014"
+  var remaining = Number(window.remaining)
+  if (remaining <= settings.critRemaining) return "\u{1F534}"
+  if (remaining <= settings.warnRemaining) return "\u{1F7E1}"
+  return "\u{1F7E2}"
 }
 
 function tooltip(report, settings, nowMs) {
@@ -280,8 +288,9 @@ function tooltip(report, settings, nowMs) {
   title = truncate(label + " - " + modeLabel + (report.stale ? " (cached)" : ""), TOOLTIP_WIDTH)
 
   var leftHeader = cfg.percentMode === "used" ? "Used" : "Left"
-  var header = padEnd("Win", 3) + "  " + padStart(leftHeader, 5) + "  "
-    + padStart("Resets in", 9) + "  " + padStart("At", 11) + "  " + padStart("Runway", 7)
+  var header = padEnd("St", 2) + "  " + padEnd("Win", 3) + "  "
+    + padStart(leftHeader, 5) + "  " + padStart("Resets in", 9) + "  "
+    + padStart("At", 11) + "  " + padStart("Runway", 7)
   var lines = [title, separator, padEnd(header, TOOLTIP_WIDTH)]
 
   var names = availableNames(report.windows)
@@ -297,7 +306,7 @@ function tooltip(report, settings, nowMs) {
     }
     var runway = report.runway && report.runway[name] ? report.runway[name].seconds : null
     var runwayText = runway !== null && runway !== undefined ? fmtDuration(runway) : "\u2014"
-    var row = padEnd(windowLabel(name), 3)
+    var row = padEnd(statusDot(window, cfg), 2) + "  " + padEnd(windowLabel(name), 3)
       + "  " + padStart(percentText(window, cfg.percentMode) + "%", 5)
       + "  " + padStart(fmtDuration(resetSeconds), 9)
       + "  " + padStart(fmtReset(name, window.resetsAt), 11)
@@ -309,16 +318,16 @@ function tooltip(report, settings, nowMs) {
     lines.push(separator)
     lines.push(padEnd("Local usage - this cycle", TOOLTIP_WIDTH))
     lines.push(padEnd(
-      padEnd("Model", 22) + "  " + padStart("Cost", 5) + "  "
+      padEnd("Model", 26) + "  " + padStart("Cost", 5) + "  "
         + padStart("Msgs", 6) + "  " + padEnd("Free", 4),
       TOOLTIP_WIDTH
     ))
     var limit = Math.min(report.models.length, 3)
     for (var m = 0; m < limit; m++) {
       var model = report.models[m]
-      var modelName = truncate(String(model.id || "unknown"), 22)
+      var modelName = truncate(String(model.id || "unknown"), 26)
       lines.push(padEnd(
-        padEnd(modelName, 22) + "  " + padStart(fmtCost(model.cost), 5) + "  "
+        padEnd(modelName, 26) + "  " + padStart(fmtCost(model.cost), 5) + "  "
           + padStart(String(model.messages), 6) + "  " + padEnd(model.free ? "yes" : "-", 4),
         TOOLTIP_WIDTH
       ))
@@ -455,6 +464,7 @@ if (typeof module !== "undefined" && module.exports) {
     fmtCompact: fmtCompact,
     fmtCost: fmtCost,
     tooltip: tooltip,
+    statusDot: statusDot,
     stateMessage: stateMessage,
     trendDaily: trendDaily,
     trendSamples: trendSamples,

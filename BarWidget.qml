@@ -37,12 +37,11 @@ BarWidget {
 
   readonly property color displayColor: {
     if (!bar) return Commons.Color.foreground
+    var background = bar.background || Commons.Color.background
+    var luminance = 0.2126 * background.r + 0.7152 * background.g + 0.0722 * background.b
     if (level === "crit") return bar.urgent || Commons.Color.urgent
-    if (level === "warn") {
-      var background = bar.background || Commons.Color.background
-      var luminance = 0.2126 * background.r + 0.7152 * background.g + 0.0722 * background.b
-      return luminance > 0.5 ? "#a35f00" : "#e8a33d"
-    }
+    if (level === "warn") return luminance > 0.5 ? "#a35f00" : "#e8a33d"
+    if (level === "normal") return luminance > 0.5 ? "#2e7d32" : "#9ece6a"
     return bar.barForeground || bar.foreground || Commons.Color.foreground
   }
 

@@ -17,8 +17,8 @@ per-model detail.
 
 - Bar display: `worst` (least remaining), `all` windows, or `month` only.
 - Remaining percentage by default; switch to used in the settings.
-- Threshold colors: remaining ≤ 20% amber, ≤ 10% red with `!`.
-- Hover tooltip is a fixed-width table: labels are left-aligned, values right-aligned, `Free` is its own column, and both table headers span the full width.
+- Status colors: healthy green, remaining ≤ 20% amber, ≤ 10% red with `!`.
+- Hover tooltip is a fixed-width table: labels are left-aligned, values right-aligned, `Free` is its own column, both table headers span the full width, and a `St` column shows 🟢 / 🟡 / 🔴 status dots.
 - Panel: three quota windows, reset times and countdowns, runway, 7-day/cycle
   trend, per-model usage, and an inline settings page.
 - Threshold notifications through `notify-send`, deduplicated per window,
@@ -166,8 +166,8 @@ OpenCode Quota 把 **OpenCode Go / Go Plus** 的订阅额度放进 Omarchy 顶�
 
 - 顶栏显示：`worst`（剩余最少）、`all`（三个窗口）、`month`（只看订阅月）。
 - 默认显示剩余百分比，可在设置里切换为已用。
-- 阈值颜色：剩余 ≤ 20% 琥珀色，≤ 10% 红色并带 `!`。
-- hover tooltip 是等宽表格：标签左对齐，数值右对齐，free 单独一列，两个表头都铺满整行。
+- 状态颜色：健康绿色，剩余 ≤ 20% 琥珀色，≤ 10% 红色并带 `!`。
+- hover tooltip 是等宽表格：标签左对齐，数值右对齐，free 单独一列，两个表头都铺满整行，并用 `St` 列的 🟢 / 🟡 / 🔴 标状态。
 - 面板：三个额度窗口、重置时间和倒计时、runway、7 天/本周期趋势、按模型用量、
   面板内设置页。
 - 阈值通知由 `notify-send` 发送；按“窗口 + 级别 + 重置时间”去重。

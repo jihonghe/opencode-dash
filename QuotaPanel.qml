@@ -28,6 +28,11 @@ Panel {
     return luminance > 0.5 ? "#a35f00" : "#e8a33d"
   }
   readonly property color critColor: bar && bar.urgent ? bar.urgent : Commons.Color.urgent
+  readonly property color okColor: {
+    var background = Commons.Color.popups.background
+    var luminance = 0.2126 * background.r + 0.7152 * background.g + 0.0722 * background.b
+    return luminance > 0.5 ? "#2e7d32" : "#9ece6a"
+  }
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property var windows: report && report.windows ? report.windows : ({})
   readonly property string stateText: Model.stateMessage(report)
@@ -218,6 +223,7 @@ Panel {
                 accent: root.accent
                 warnColor: root.warnColor
                 critColor: root.critColor
+                okColor: root.okColor
                 fontFamily: root.fontFamily
               }
             }

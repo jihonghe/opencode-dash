@@ -98,6 +98,10 @@ Item {
     check("tooltip local usage", tip.indexOf("Local usage - this cycle") !== -1)
     check("tooltip model header", tip.indexOf("Model") !== -1 && tip.indexOf("Cost") !== -1
       && tip.indexOf("Msgs") !== -1 && tip.indexOf("Free") !== -1)
+    check("status dots", Model.statusDot({ remaining: 50 }, { warnRemaining: 20, critRemaining: 10 }) === "🟢"
+      && Model.statusDot({ remaining: 15 }, { warnRemaining: 20, critRemaining: 10 }) === "🟡"
+      && Model.statusDot({ remaining: 5 }, { warnRemaining: 20, critRemaining: 10 }) === "🔴")
+    check("tooltip status column", tip.indexOf("St") !== -1 && tip.indexOf("🟢") !== -1)
     check("tooltip free column", tip.indexOf("yes") !== -1)
     check("tooltip updated", tip.indexOf("updated 20:35") !== -1)
     var tipLines = tip.split("\n")
