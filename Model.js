@@ -240,9 +240,15 @@ function stateMessage(report) {
   return ""
 }
 
-function trendSamples(samples, mode, nowMs) {
+function trendSamples(samples, mode, nowMs, cycleStartMs) {
   var rows = (samples || []).slice()
-  if (mode === "cycle") return rows
+  if (mode === "cycle") {
+    if (!cycleStartMs) return rows
+    return rows.filter(function (sample) {
+      var time = new Date(sample.t).getTime()
+      return isFinite(time) && time >= cycleStartMs
+    })
+  }
   var horizon = mode === "24h" ? 24 * 3600 * 1000 : 7 * 24 * 3600 * 1000
   var cutoff = (nowMs || Date.now()) - horizon
   return rows.filter(function (sample) {

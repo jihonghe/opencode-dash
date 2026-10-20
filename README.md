@@ -92,6 +92,8 @@ runway are built from samples the plugin records each time it refreshes:
   window just reset, that window has no runway until enough new samples
   accumulate.
 - The trend is built from official readings, so it also covers every client.
+- The chart shows how much sample history exists. Early on, 24h / 7d / Cycle
+  can look identical because all samples fit inside the shortest range.
 
 ### Data sources and privacy
 
@@ -246,6 +248,8 @@ omarchy plugin remove jihonghe.opencode-quota
 - Runway 是百分比斜率的估算，并封顶到下一次重置；如果用量平稳或窗口刚重置，该
   窗口暂时没有 runway，直到积累足够的新样本。
 - 趋势来自官方读数，因此同样覆盖所有客户端。
+- 图表下方会显示当前样本历史长度；早期 24h / 7d / Cycle 可能显示同一段数据，
+  因为所有样本都落在最短范围内。
 
 ### 数据源与隐私
 

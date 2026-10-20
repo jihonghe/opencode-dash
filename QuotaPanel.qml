@@ -37,6 +37,14 @@ Panel {
   readonly property var windows: report && report.windows ? report.windows : ({})
   readonly property string stateText: Model.stateMessage(report)
   readonly property bool trendReady: Model.trendReady(report ? report.samples : [], 3, 3600)
+  readonly property real cycleStartMs: {
+    var reset = report && report.windows && report.windows.monthly ? report.windows.monthly.resetsAt : null
+    if (!reset) return 0
+    var date = new Date(reset)
+    if (isNaN(date.getTime())) return 0
+    date.setUTCMonth(date.getUTCMonth() - 1)
+    return date.getTime()
+  }
 
   function openSettings() {
     settingsMode = true
@@ -238,7 +246,7 @@ Panel {
             PanelSectionHeader {
               anchors.left: parent.left
               anchors.verticalCenter: parent.verticalCenter
-              text: "Trend"
+              text: "Remaining quota"
               foreground: root.foreground
               fontFamily: root.fontFamily
             }
@@ -282,6 +290,7 @@ Panel {
             width: parent.width
             samples: root.report && root.report.samples ? root.report.samples : []
             mode: root.trendMode
+            cycleStartMs: root.cycleStartMs
             nowMs: root.nowMs
             foreground: root.foreground
             accent: root.accent

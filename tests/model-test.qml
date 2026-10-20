@@ -103,6 +103,8 @@ Item {
     check("trend 24h", Model.trendSamples(sampleRows, "24h", now).length === 1)
     check("trend 7d", Model.trendSamples(sampleRows, "7d", now).length === 2)
     check("trend cycle", Model.trendSamples(sampleRows, "cycle", now).length === 3)
+    check("trend cycle start", Model.trendSamples(sampleRows, "cycle", now,
+      Date.parse("2026-10-18T12:00:00Z")).length === 2)
     check("trend ready", Model.trendReady(sampleRows) === true)
     check("trend not ready points", Model.trendReady(sampleRows.slice(0, 2)) === false)
     check("trend not ready span", Model.trendReady([

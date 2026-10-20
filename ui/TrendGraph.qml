@@ -9,11 +9,12 @@ Column {
   property var samples: []
   property string mode: "7d"
   property real nowMs: Date.now()
+  property real cycleStartMs: 0
   property color foreground: Commons.Color.foreground
   property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
 
-  readonly property var filtered: Model.trendSamples(samples, mode, nowMs)
+  readonly property var filtered: Model.trendSamples(samples, mode, nowMs, cycleStartMs)
   readonly property var rolling: seriesFor("rolling")
   readonly property var weekly: seriesFor("weekly")
   readonly property var monthly: seriesFor("monthly")
@@ -29,9 +30,24 @@ Column {
       if (value === undefined || value === null) continue
       var time = new Date(filtered[i].t).getTime()
       if (!isFinite(time)) continue
-      out.push({ t: time, v: Number(value) })
+      out.push({ t: time, v: Math.max(0, Math.min(100, 100 - Number(value))) })
     }
     return out
+  }
+
+  function latest(name) {
+    var points = seriesFor(name)
+    return points.length > 0 ? Math.round(points[points.length - 1].v) + "%" : ""
+  }
+
+  readonly property string historyText: {
+    if (filtered.length === 0) return "no samples"
+    var first = new Date(filtered[0].t).getTime()
+    var last = new Date(filtered[filtered.length - 1].t).getTime()
+    var span = Math.max(0, Math.round((last - first) / 1000))
+    var range = mode === "24h" ? 86400 : (mode === "7d" ? 7 * 86400 : 30 * 86400)
+    var suffix = span < range ? " \u00b7 all samples so far" : " \u00b7 " + filtered.length + " samples"
+    return Model.fmtDuration(span) + suffix
   }
 
   function colorFor(name) {
@@ -62,26 +78,24 @@ Column {
     id: legend
     spacing: Style.space(10)
 
-    Text {
-      text: "5h"
-      color: root.colorFor("rolling")
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
-      textFormat: Text.PlainText
+    SeriesLabel {
+      visible: root.latest("rolling") !== ""
+      label: "5h " + root.latest("rolling")
+      swatch: root.colorFor("rolling")
+      fontFamily: root.fontFamily
     }
-    Text {
-      text: "7d"
-      color: root.colorFor("weekly")
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
-      textFormat: Text.PlainText
+    SeriesLabel {
+      visible: root.latest("weekly") !== ""
+      label: "7d " + root.latest("weekly")
+      swatch: root.colorFor("weekly")
+      dashed: true
+      fontFamily: root.fontFamily
     }
-    Text {
-      text: "M"
-      color: root.colorFor("monthly")
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
-      textFormat: Text.PlainText
+    SeriesLabel {
+      visible: root.latest("monthly") !== ""
+      label: "M " + root.latest("monthly")
+      swatch: root.colorFor("monthly")
+      fontFamily: root.fontFamily
     }
     Text {
       text: "remaining %"
@@ -191,6 +205,27 @@ Column {
           height - padBottom + Style.space(2))
       }
     }
+  }
+
+  Text {
+    width: root.width
+    text: "Official API samples \u00b7 " + root.historyText
+    color: Qt.darker(root.foreground, 1.45)
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.caption
+    wrapMode: Text.WordWrap
+    textFormat: Text.PlainText
+  }
+
+  Text {
+    visible: root.historyText.indexOf("all samples so far") !== -1
+    width: root.width
+    text: "24h / 7d / Cycle differ once more samples accumulate."
+    color: Qt.darker(root.foreground, 1.55)
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.caption
+    wrapMode: Text.WordWrap
+    textFormat: Text.PlainText
   }
 
   Connections {
