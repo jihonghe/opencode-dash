@@ -7,5 +7,6 @@
   "models": [],
   "daily": [],
   "samples": [],
-  "cycleStart": null
+  "cycleStart": null,
+  "localUpdatedAt": null
 }

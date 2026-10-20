@@ -247,6 +247,7 @@ where type like '%assistant%'
   "state": "ok",
   "stale": false,
   "updatedAt": "2026-10-20T20:35:00+08:00",
+  "localUpdatedAt": "2026-10-20T23:44:35+08:00",
   "planLabel": "OpenCode Go",
   "windows": {
     "rolling": {"percent": 2, "remaining": 98, "resetsAt": "2026-10-20T16:08:43Z", "resetInSec": 14400},
@@ -271,6 +272,7 @@ where type like '%assistant%'
 
 - `state`: `ok` | `no-key` | `auth-expired` | `stale` | `no-data`
 - `stale=true` 时 `windows` 来自缓存，`updatedAt` 是缓存时间
+- `localUpdatedAt` 是 opencode.db 中最后一条带 cost 的 assistant 记录时间；它只反映 OpenCode CLI/TUI 的本地用量，其它客户端不写入该 DB
 - `alerts` 由插件用于发通知（也可在 QML 里判断）
 
 ---

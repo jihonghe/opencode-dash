@@ -279,11 +279,32 @@ Panel {
             fontFamily: root.fontFamily
           }
 
-          PanelSectionHeader {
+          Item {
             visible: !root.settingsMode && root.cfg.showModelDetail
-            text: "Models this cycle"
-            foreground: root.foreground
-            fontFamily: root.fontFamily
+            width: parent.width
+            height: Math.max(modelsHeader.implicitHeight, localLastText.implicitHeight)
+
+            PanelSectionHeader {
+              id: modelsHeader
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              text: "Local usage \u00b7 opencode.db"
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+            }
+
+            Text {
+              id: localLastText
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              text: root.report && root.report.localUpdatedAt
+                ? "last " + Model.fmtDateTime(root.report.localUpdatedAt)
+                : "no local data"
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              textFormat: Text.PlainText
+            }
           }
 
           ModelTable {
@@ -293,6 +314,17 @@ Panel {
             foreground: root.foreground
             accent: root.accent
             fontFamily: root.fontFamily
+          }
+
+          Text {
+            visible: !root.settingsMode && root.cfg.showModelDetail
+            width: parent.width
+            text: "Only usage written by the OpenCode CLI/TUI is stored in opencode.db. Other clients (for example ZCode) update the API quota but not this database."
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            wrapMode: Text.WordWrap
+            textFormat: Text.PlainText
           }
 
           PanelSeparator {

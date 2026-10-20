@@ -94,6 +94,12 @@ two lines (`7d` / `79%`) to stay readable.
 - Local model detail covers the `opencode-go` and `opencode` providers (the
   latter is where free models such as nemotron appear). Local costs are shown
   for information only and are **not** converted into quota percentages.
+- Local model detail comes from `opencode.db` and therefore only reflects
+  usage recorded by the **OpenCode CLI/TUI**. Other clients that use the same
+  subscription (for example ZCode) update the API percentages but do not write
+  to this database. The panel and tooltip show a `last MM-DD HH:mm` marker so
+  you can see how fresh the local data is. Costs are rounded to 2 decimals, so
+  a small increase may not change the displayed value.
 - Cache files live in `~/.cache/opencode-quota/` and contain percentages,
   timestamps, and local usage only. Samples are kept for 30 days.
 - Standard `https_proxy` / `HTTPS_PROXY` environment variables are honored;
@@ -237,6 +243,10 @@ omarchy plugin remove jihonghe.opencode-quota
   `message`，不修改 OpenCode 的任何数据。
 - 本地模型明细覆盖 `opencode-go` 和 `opencode` 两个 provider（免费模型如 nemotron
   属于后者）。本地 cost 只用于展示，**不换算成配额百分比**。
+- 本地模型明细来自 `opencode.db`，只反映 **OpenCode CLI/TUI** 写入的用量。其它客户端
+  （例如 ZCode）会消耗同一个订阅、让 API 百分比变化，但不会写入这个数据库。面板和
+  tooltip 会显示 `last MM-DD HH:mm`，用来看本地数据有多新。cost 显示保留 2 位小数，
+  很小的新增可能不会改变显示值。
 - 缓存位于 `~/.cache/opencode-quota/`，只包含百分比、时间和本地用量；采样保留
   30 天。
 - 尊重标准 `https_proxy` / `HTTPS_PROXY` 环境变量；插件本身不硬编码代理。

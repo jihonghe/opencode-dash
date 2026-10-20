@@ -300,14 +300,35 @@ PopupWindow {
         color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.12)
       }
 
-      Text {
+      Item {
         visible: root.cfg.showModelDetail && root.models.length > 0
-        text: "Local usage \u00b7 this cycle"
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-        font.bold: true
-        textFormat: Text.PlainText
+        width: parent.width
+        height: Math.max(localTitle.implicitHeight, localLast.implicitHeight)
+
+        Text {
+          id: localTitle
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          text: "Local usage \u00b7 opencode.db"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          font.bold: true
+          textFormat: Text.PlainText
+        }
+
+        Text {
+          id: localLast
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          text: root.report && root.report.localUpdatedAt
+            ? "last " + Model.fmtDateTime(root.report.localUpdatedAt)
+            : "no local data"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          textFormat: Text.PlainText
+        }
       }
 
       Column {

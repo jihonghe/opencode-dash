@@ -148,6 +148,7 @@ class KeyTests(Base):
         self.assertEqual(report["state"], "no-key")
         self.assertFalse(report["ok"])
         self.assertEqual(report["windows"], {})
+        self.assertIsNone(report["localUpdatedAt"])
 
 
 class ApiStateTests(Base):
@@ -271,6 +272,7 @@ class AggregationTests(Base):
         self.assertAlmostEqual(ids["deepseek-v4.1-flash"]["cost"], 2.0, places=4)
         self.assertTrue(ids["nemotron-3.5-super-vl-free"]["free"])
         self.assertEqual(ids["no-tokens"]["tokens"]["input"], 0)
+        self.assertEqual(report["localUpdatedAt"], "2026-10-20T09:00:00+00:00")
 
         days = {row["date"]: row for row in report["daily"]}
         self.assertEqual(days["2026-10-19"]["messages"], 2)
@@ -286,6 +288,7 @@ class AggregationTests(Base):
         self.assertEqual(ids["deepseek-v4.1-flash"]["messages"], 1)
         self.assertAlmostEqual(ids["deepseek-v4.1-flash"]["cost"], 1.25, places=4)
         self.assertEqual(ids["deepseek-v4.1-flash"]["tokens"]["cacheRead"], 30)
+        self.assertEqual(report["localUpdatedAt"], "2026-10-19T12:00:00+00:00")
 
 
 class RunwayTests(unittest.TestCase):

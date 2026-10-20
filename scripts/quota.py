@@ -722,25 +722,70 @@ def _normalize_daily(rows: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return daily
 
 
-def load_local_usage(db_path: Optional[str], cycle_start: dt.datetime) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+def _v2_latest_ts(con: sqlite3.Connection, cycle_start_ms: int) -> Optional[int]:
+    try:
+        row = con.execute(
+            """
+            select max(time_created)
+            from session_message
+            where type like '%assistant%'
+              and json_valid(data)
+              and json_extract(data, '$.model.providerID') in ('opencode-go', 'opencode')
+              and json_extract(data, '$.cost') is not null
+              and time_created >= ?
+            """,
+            (cycle_start_ms,),
+        ).fetchone()
+        return int(row[0]) if row and row[0] else None
+    except sqlite3.Error:
+        return None
+
+
+def _v1_latest_ts(con: sqlite3.Connection, cycle_start_ms: int) -> Optional[int]:
+    columns = _column_names(con, "message")
+    expressions = _v1_expressions(columns)
+    if not expressions:
+        return None
+    time_ms = _time_ms('"%s"' % expressions["time"])
+    sql = """
+        select max({time_ms})
+        from message
+        where {type_filter}
+          and {valid}
+          and ({provider}) in ('opencode-go', 'opencode')
+          and ({cost}) is not null
+          and {time_ms} >= ?
+    """.format(time_ms=time_ms, **expressions)
+    try:
+        row = con.execute(sql, (cycle_start_ms,)).fetchone()
+        return int(row[0]) if row and row[0] else None
+    except sqlite3.Error:
+        return None
+
+
+def load_local_usage(db_path: Optional[str], cycle_start: dt.datetime) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Optional[int]]:
     db = _resolve(db_path, default_db_path())
     if not db.exists():
-        return [], []
+        return [], [], None
     cycle_start_ms = int(cycle_start.timestamp() * 1000)
     try:
         con = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
     except sqlite3.Error:
-        return [], []
+        return [], [], None
     try:
         con.execute("pragma busy_timeout = 2000")
         tables = _table_names(con)
         if "session_message" in tables:
-            return _normalize_models(_v2_model_rows(con, cycle_start_ms)), _normalize_daily(_v2_daily_rows(con, cycle_start_ms))
+            return (_normalize_models(_v2_model_rows(con, cycle_start_ms)),
+                    _normalize_daily(_v2_daily_rows(con, cycle_start_ms)),
+                    _v2_latest_ts(con, cycle_start_ms))
         if "message" in tables:
-            return _normalize_models(_v1_model_rows(con, cycle_start_ms)), _normalize_daily(_v1_daily_rows(con, cycle_start_ms))
-        return [], []
+            return (_normalize_models(_v1_model_rows(con, cycle_start_ms)),
+                    _normalize_daily(_v1_daily_rows(con, cycle_start_ms)),
+                    _v1_latest_ts(con, cycle_start_ms))
+        return [], [], None
     except sqlite3.Error:
-        return [], []
+        return [], [], None
     finally:
         con.close()
 
@@ -926,6 +971,7 @@ def collect_report(
         "samples": [],
         "alerts": [],
         "cycleStart": None,
+        "localUpdatedAt": None,
     }
 
     key, _source = read_key(db_path, auth_path)
@@ -933,10 +979,11 @@ def collect_report(
     samples = read_samples(cache_root)
 
     def finish_local(cycle_start: dt.datetime) -> None:
-        models, daily = load_local_usage(db_path, cycle_start)
+        models, daily, latest_ms = load_local_usage(db_path, cycle_start)
         report["models"] = models
         report["daily"] = daily
         report["cycleStart"] = iso_z(cycle_start)
+        report["localUpdatedAt"] = local_iso(latest_ms / 1000) if latest_ms else None
 
     if not key:
         report["state"] = "no-key"
@@ -1046,6 +1093,7 @@ def fixture_report(path: str) -> Dict[str, Any]:
         "samples": parsed.get("samples", []),
         "alerts": [],
         "cycleStart": parsed.get("cycleStart"),
+        "localUpdatedAt": parsed.get("localUpdatedAt"),
     }
     return report
 

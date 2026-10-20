@@ -97,6 +97,7 @@ Item {
     check("reset weekly", Model.fmtReset("weekly", "2026-10-26T00:00:00Z") === "Mon 00:00")
     check("reset monthly", Model.fmtReset("monthly", "2026-11-17T14:35:30Z") === "11-17 14:35")
     check("compact", Model.fmtCompact(10710000) === "10.7M")
+    check("datetime", Model.fmtDateTime("2026-10-20T23:44:00Z") === "10-20 23:44")
     check("cost", Model.fmtCost(3.993) === "$3.99")
     check("free cost", Model.fmtCost(0) === "$0")
 

@@ -233,6 +233,14 @@ function fmtUpdated(iso) {
   return pad2(date.getHours()) + ":" + pad2(date.getMinutes())
 }
 
+function fmtDateTime(iso) {
+  if (!iso) return "\u2014"
+  var date = new Date(iso)
+  if (isNaN(date.getTime())) return "\u2014"
+  return pad2(date.getMonth() + 1) + "-" + pad2(date.getDate())
+    + " " + pad2(date.getHours()) + ":" + pad2(date.getMinutes())
+}
+
 function fmtCompact(value) {
   var number = Number(value) || 0
   var absolute = Math.abs(number)
@@ -501,6 +509,7 @@ if (typeof module !== "undefined" && module.exports) {
     fmtDuration: fmtDuration,
     fmtReset: fmtReset,
     fmtUpdated: fmtUpdated,
+    fmtDateTime: fmtDateTime,
     fmtCompact: fmtCompact,
     fmtCost: fmtCost,
     tooltip: tooltip,

@@ -3,27 +3,96 @@
   "stale": true,
   "updatedAt": "2026-10-20T23:00:00+08:00",
   "windows": {
-    "rolling": { "available": true, "percent": 4, "remaining": 96, "resetsAt": "2026-10-20T16:08:43Z", "resetInSec": 3003 },
-    "weekly": { "available": true, "percent": 21, "remaining": 79, "resetsAt": "2026-10-26T00:00:00Z", "resetInSec": 463280 },
-    "monthly": { "available": true, "percent": 14, "remaining": 86, "resetsAt": "2026-11-17T14:35:30Z", "resetInSec": 2416610 }
+    "rolling": {
+      "available": true,
+      "percent": 4,
+      "remaining": 96,
+      "resetsAt": "2026-10-20T16:08:43Z",
+      "resetInSec": 3003
+    },
+    "weekly": {
+      "available": true,
+      "percent": 21,
+      "remaining": 79,
+      "resetsAt": "2026-10-26T00:00:00Z",
+      "resetInSec": 463280
+    },
+    "monthly": {
+      "available": true,
+      "percent": 14,
+      "remaining": 86,
+      "resetsAt": "2026-11-17T14:35:30Z",
+      "resetInSec": 2416610
+    }
   },
   "runway": {
-    "rolling": { "seconds": 21600 },
-    "weekly": { "seconds": null },
-    "monthly": { "seconds": 1036800 }
+    "rolling": {
+      "seconds": 21600
+    },
+    "weekly": {
+      "seconds": null
+    },
+    "monthly": {
+      "seconds": 1036800
+    }
   },
   "models": [
-    { "id": "deepseek-v4.1-flash", "messages": 1251, "cost": 4.01, "tokens": { "input": 10993353, "output": 627511, "reasoning": 1272665, "cacheRead": 401312512 }, "free": false },
-    { "id": "nemotron-3.5-super-vl-free", "messages": 24, "cost": 0, "tokens": { "input": 133300, "output": 7200, "reasoning": 8900, "cacheRead": 134400000 }, "free": true }
+    {
+      "id": "deepseek-v4.1-flash",
+      "messages": 1251,
+      "cost": 4.01,
+      "tokens": {
+        "input": 10993353,
+        "output": 627511,
+        "reasoning": 1272665,
+        "cacheRead": 401312512
+      },
+      "free": false
+    },
+    {
+      "id": "nemotron-3.5-super-vl-free",
+      "messages": 24,
+      "cost": 0,
+      "tokens": {
+        "input": 133300,
+        "output": 7200,
+        "reasoning": 8900,
+        "cacheRead": 134400000
+      },
+      "free": true
+    }
   ],
   "daily": [
-    { "date": "2026-10-18", "messages": 526, "cost": 1.103 },
-    { "date": "2026-10-19", "messages": 438, "cost": 1.7839 },
-    { "date": "2026-10-20", "messages": 296, "cost": 1.1061 }
+    {
+      "date": "2026-10-18",
+      "messages": 526,
+      "cost": 1.103
+    },
+    {
+      "date": "2026-10-19",
+      "messages": 438,
+      "cost": 1.7839
+    },
+    {
+      "date": "2026-10-20",
+      "messages": 296,
+      "cost": 1.1061
+    }
   ],
   "samples": [
-    { "t": "2026-10-20T14:00:00Z", "rolling": 2, "weekly": 20, "monthly": 13 },
-    { "t": "2026-10-20T15:00:00Z", "rolling": 4, "weekly": 21, "monthly": 14 }
+    {
+      "t": "2026-10-20T14:00:00Z",
+      "rolling": 2,
+      "weekly": 20,
+      "monthly": 13
+    },
+    {
+      "t": "2026-10-20T15:00:00Z",
+      "rolling": 4,
+      "weekly": 21,
+      "monthly": 14
+    }
   ],
-  "cycleStart": "2026-10-17T14:35:30Z"
+  "cycleStart": "2026-10-17T14:35:30Z",
+  "localUpdatedAt": "2026-10-20T23:44:35+08:00"
 }
