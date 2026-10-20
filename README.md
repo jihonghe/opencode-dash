@@ -15,14 +15,14 @@ any future agent.
 
 ### Features
 
-- Bar display: `worst` (least remaining), `all` windows, or `month` only.
+- Bar display: `worst` (least remaining), `all` periods, or `month` only.
 - Remaining percentage by default; switch to used in the settings.
 - Status colors: healthy green, remaining ≤ 20% amber, ≤ 10% red with `!`.
-- Only the percentage is colored; the window label and `%` stay in the
+- Only the percentage is colored; the period label and `%` stay in the
   foreground.
-- Panel: three quota windows, reset times/countdowns, and a Runway table with
+- Panel: three quota periods, reset times/countdowns, and a Runway table with
   burn rate, runway, and warn/crit ETAs.
-- Threshold notifications through `notify-send`, deduplicated per window,
+- Threshold notifications through `notify-send`, deduplicated per period,
   level, and reset time.
 - Settings in the panel and in Setup → Plugins edit the same `shell.json`
   fields.
@@ -72,12 +72,12 @@ fields.
 | `warnRemaining` | integer | `20` | Warn below this remaining percentage |
 | `critRemaining` | integer | `10` | Critical below this remaining percentage |
 | `notifyEnabled` | boolean | `true` | Threshold notifications |
-| `notifyReset` | boolean | `false` | Notify when a window starts over |
+| `notifyReset` | boolean | `false` | Notify when a period resets |
 | `planLabel` | string | `OpenCode Go` | Label shown in the panel and notifications |
 
-The bar text uses short labels: `5h` (rolling), `7d` (weekly), and `M`
-(subscription month). In a vertical bar the widget shows the worst window as
-two lines (`7d` / `79%`) to stay readable.
+The bar uses the official period names: `Rolling`, `Weekly`, and `Monthly`.
+In a vertical bar it uses the short aliases `5h`, `7d`, and `M`, with the
+worst period on two lines (`7d` / `79%`), to stay readable.
 
 ### Runway
 
@@ -88,28 +88,28 @@ from samples the plugin records each time it refreshes:
   sample must be reasonably fresh. Until then, the Runway table is **not
   displayed at all** — no placeholders.
 - `Burn`: average percentage points per hour (5h) or per day (7d / M).
-- `Runway`: time until the window is exhausted. `Lasts until reset` means the
-  current burn rate will not exhaust it before the window resets.
-- `Warn` / `Crit`: time until the window reaches the configured remaining
+- `Runway`: time until the period is exhausted. `Lasts until reset` means the
+  current burn rate will not exhaust it before the period resets.
+- `Warn` / `Crit`: time until the period reaches the configured remaining
   thresholds. `now` means it is already below, `after reset` means it will not
-  reach the threshold before the window resets.
+  reach the threshold before the period resets.
 - The footer shows the sample basis, e.g.
   `Based on official API samples · 5h 10m · 106 points`.
-- If usage is flat or a window just reset, that window has no estimate until
-  enough new samples accumulate. The panel hides the whole table when no window
+- If usage is flat or a period just reset, that period has no estimate until
+  enough new samples accumulate. The panel hides the whole table when no period
   has a usable estimate.
 - The estimates use official readings, so they cover every client.
 - Runway colors:
   - **Green**: remaining is healthy and the current burn lasts until reset.
   - **Amber**: remaining is at or below the warn threshold, or the current
-    burn is projected to exhaust the window before reset.
-  - **Red**: remaining is at or below the critical threshold, or the window is
+    burn is projected to exhaust the period before reset.
+  - **Red**: remaining is at or below the critical threshold, or the period is
     empty.
 - The percentage color reflects **current remaining**; the Runway color
   reflects the **forecast**. They can differ: a green percentage with an amber
   runway means there is still quota, but the current burn will use it before
-  the window resets.
-- If a window has no consumption at all (a flat burn rate), the table shows
+  the period resets.
+- If a period has no consumption at all (a flat burn rate), the table shows
   `0.0%/h`, `Lasts until reset`, and `after reset` instead of blank cells.
   Insufficient sample history is still hidden/blank.
 - In the tooltip, `Resets in` shows only the countdown (`2m`, `5d 2h`); the
@@ -154,7 +154,7 @@ cache. Notifications are sent with `notify-send`; no systemd unit is installed.
   1 hour with a fresh latest sample. It appears automatically; nothing is
   shown before that.
 - **No notifications**: check `notify-send`, your notification daemon, and
-  Do Not Disturb. Alerts are deduplicated per window/level/reset.
+  Do Not Disturb. Alerts are deduplicated per period/level/reset.
 - **Check the data layer manually**:
   `python3 scripts/quota.py --json --force | python3 -m json.tool`
 - **Logs**: `journalctl --user -b --no-pager | grep -i opencode-quota`
@@ -180,7 +180,7 @@ For UI state tests, add `"debugFixture": "/path/to/tests/fixtures/report-stale.j
 to the widget's `shell.json` entry. The script then returns that fixture
 instead of real data. Available fixtures: `report-stale.json`,
 `report-no-key.json`, `report-auth-expired.json`, `report-not-ready.json`
-(Runway table hidden), and `report-idle.json` (zero burn / idle window).
+(Runway table hidden), and `report-idle.json` (zero burn / idle period).
 Remove the setting when done.
 
 ### Credits and license
@@ -203,13 +203,13 @@ CLI/TUI、ZCode，以及未来任何 Agent。
 
 ### 功能
 
-- 顶栏显示：`worst`（剩余最少）、`all`（三个窗口）、`month`（只看订阅月）。
+- 顶栏显示：`worst`（剩余最少）、`all`（三个周期）、`month`（只看订阅月）。
 - 默认显示剩余百分比，可在设置里切换为已用。
 - 状态颜色：健康绿色、剩余 ≤ 20% amber、≤ 10% 红色并带 `!`。
-- 只有百分比本身着色，窗口标签和 `%` 保持前景色。
-- 面板：三个额度窗口、重置时间和倒计时，以及包含 burn rate、runway 和
+- 只有百分比本身着色，周期标签和 `%` 保持前景色。
+- 面板：三个额度周期、重置时间和倒计时，以及包含 burn rate、runway 和
   警告/严重 ETA 的 Runway 表。
-- 阈值通知由 `notify-send` 发送；按“窗口 + 级别 + 重置时间”去重。
+- 阈值通知由 `notify-send` 发送；按“周期 + 级别 + 重置时间”去重。
 - 面板设置页和 Setup → Plugins 修改同一份 `shell.json` 字段。
 - 明暗主题、top/bottom/left/right 四个方向的顶栏。
 - 只使用官方账号级数据；不读本地 Agent 日志，不做模型/cost 估算，无遥测。
@@ -255,11 +255,11 @@ omarchy plugin remove jihonghe.opencode-quota
 | `warnRemaining` | integer | `20` | 剩余低于此百分比时警告 |
 | `critRemaining` | integer | `10` | 剩余低于此百分比时严重警告 |
 | `notifyEnabled` | boolean | `true` | 阈值通知 |
-| `notifyReset` | boolean | `false` | 窗口重置时通知 |
+| `notifyReset` | boolean | `false` | 周期重置时通知 |
 | `planLabel` | string | `OpenCode Go` | 面板和通知里的套餐标签 |
 
-顶栏短标签：`5h`（滚动窗口）、`7d`（自然周）、`M`（订阅月）。垂直顶栏只显示
-最紧窗口，分两行显示（`7d` / `79%`），避免文字被截断。
+顶栏使用官方周期名：`Rolling` / `Weekly` / `Monthly`。垂直顶栏为节省宽度使用短标签
+`5h` / `7d` / `M`，并分两行显示最紧周期（`7d` / `79%`）。
 
 ### Runway
 
@@ -273,16 +273,16 @@ omarchy plugin remove jihonghe.opencode-quota
   `after reset` 表示重置前不会到达该阈值。
 - 底部显示样本依据，例如
   `Based on official API samples · 5h 10m · 106 points`。
-- 如果用量平稳或窗口刚重置，该窗口暂时没有估算；所有窗口都没有可用估算时，
+- 如果用量平稳或周期刚重置，该周期暂时没有估算；所有周期都没有可用估算时，
   整张表隐藏。
 - 估算来自官方读数，因此同样覆盖所有客户端。
 - Runway 颜色：
   - **绿色**：剩余健康，且按当前速度能撑到重置。
   - **amber**：剩余已到/低于警告阈值，或按当前速度会在重置前耗尽。
-  - **红色**：剩余已到/低于严重阈值，或窗口已经为空。
+  - **红色**：剩余已到/低于严重阈值，或周期已经为空。
 - 百分比颜色表达**当前剩余**，Runway 颜色表达**预测**。两者可以不同：绿色百分比 +
   amber runway 表示“还剩不少，但当前速度会在重置前用完”。
-- 如果某个窗口完全没有消耗（burn rate 为 0），表格显示 `0.0%/h`、
+- 如果某个周期完全没有消耗（burn rate 为 0），表格显示 `0.0%/h`、
   `Lasts until reset`、`after reset`，而不是空白；样本历史不足时仍然隐藏/留空。
 - Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板同时显示绝对重置
   时间和倒计时。`Runway` 单元格附带 burn rate，底部显示采样跨度。
@@ -316,7 +316,7 @@ omarchy plugin remove jihonghe.opencode-quota
   时间。
 - **没有 Runway 表**：等插件积累至少 3 个样本、跨度 1 小时，且最新样本足够新；
   满足后会自动出现，在此之前不显示任何占位内容。
-- **没有通知**：检查 `notify-send`、通知守护进程和勿扰模式。通知按窗口/级别/
+- **没有通知**：检查 `notify-send`、通知守护进程和勿扰模式。通知按周期/级别/
   重置时间去重。
 - **手动检查数据层**：
   `python3 scripts/quota.py --json --force | python3 -m json.tool`

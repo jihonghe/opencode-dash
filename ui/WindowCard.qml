@@ -117,7 +117,7 @@ Item {
         spacing: Style.space(6)
 
         Text {
-          text: Model.windowLabel(root.name) + " window"
+          text: Model.periodLabel(root.name)
           color: root.foreground
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
@@ -138,9 +138,9 @@ Item {
       Text {
         width: parent.width
         text: root.available
-          ? "Resets " + Model.fmtReset(root.name, root.window.resetsAt)
-            + "  (in ~" + Model.fmtDuration(root.resetInSec) + ")"
-          : "No usage data for this window"
+          ? "Resets " + Model.fmtDuration(root.resetInSec)
+            + "  (" + Model.fmtReset(root.name, root.window.resetsAt) + ")"
+          : "No usage data for this period"
         color: root.dim
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption

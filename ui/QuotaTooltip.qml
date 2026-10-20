@@ -235,11 +235,11 @@ PopupWindow {
 
         Row {
           width: parent.width
-          spacing: Style.space(6)
+          spacing: Style.space(8)
 
           Text {
-            width: Style.space(34)
-            text: "Window"
+            width: Style.space(56)
+            text: "Period"
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -247,7 +247,7 @@ PopupWindow {
             textFormat: Text.PlainText
           }
           Text {
-            width: Style.space(50)
+            width: Style.space(48)
             text: root.cfg.percentMode === "used" ? "Used" : "Left"
             color: root.dim
             font.family: root.fontFamily
@@ -257,8 +257,8 @@ PopupWindow {
             textFormat: Text.PlainText
           }
           Text {
-            width: parent.width - Style.space(34) - Style.space(50)
-              - (root.showRunway ? Style.space(200) + 3 * Style.space(6) : 2 * Style.space(6))
+            width: parent.width - Style.space(56) - Style.space(48)
+              - (root.showRunway ? Style.space(186) + 3 * Style.space(8) : 2 * Style.space(8))
             text: "Resets in"
             color: root.dim
             font.family: root.fontFamily
@@ -268,7 +268,7 @@ PopupWindow {
           }
           Text {
             visible: root.showRunway
-            width: Style.space(200)
+            width: Style.space(186)
             text: "Runway"
             color: root.dim
             font.family: root.fontFamily
@@ -285,22 +285,22 @@ PopupWindow {
           delegate: Row {
             required property string modelData
             width: parent.width
-            spacing: Style.space(6)
+            spacing: Style.space(8)
 
             readonly property var win: root.windows[modelData] ? root.windows[modelData] : ({})
             readonly property bool avail: Model.isAvailable(win)
             readonly property string level: Model.windowLevel(win, root.cfg)
 
             Text {
-              width: Style.space(34)
-              text: Model.windowLabel(modelData)
+              width: Style.space(56)
+              text: Model.periodLabel(modelData)
               color: root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.bodySmall
               textFormat: Text.PlainText
             }
             Text {
-              width: Style.space(50)
+              width: Style.space(48)
               text: parent.avail
                 ? Model.percentText(parent.win, root.cfg.percentMode) + "%"
                   + (Number(parent.win.remaining) <= root.cfg.critRemaining ? "!" : "")
@@ -313,8 +313,8 @@ PopupWindow {
               textFormat: Text.PlainText
             }
             Text {
-              width: parent.width - Style.space(34) - Style.space(50)
-                - (root.showRunway ? Style.space(200) + 3 * Style.space(6) : 2 * Style.space(6))
+              width: parent.width - Style.space(56) - Style.space(48)
+                - (root.showRunway ? Style.space(186) + 3 * Style.space(8) : 2 * Style.space(8))
               text: parent.avail
                 ? Model.fmtDuration(root.resetSeconds(parent.win))
                 : "no data"
@@ -326,7 +326,7 @@ PopupWindow {
             }
             Text {
               visible: root.showRunway
-              width: Style.space(200)
+              width: Style.space(186)
               text: root.runwayText(modelData)
               color: root.runwayColor(modelData)
               font.family: root.fontFamily

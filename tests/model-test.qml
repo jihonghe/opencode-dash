@@ -30,10 +30,10 @@ Item {
   Component.onCompleted: {
     var report = sampleReport()
 
-    check("worst", Model.barText(report, {}) === "7d 80%")
-    check("all", Model.barText(report, { barWindows: "all" }) === "5h 98% \u00b7 7d 80% \u00b7 M 86%")
-    check("month", Model.barText(report, { barWindows: "month" }) === "M 86%")
-    check("used", Model.barText(report, { barWindows: "month", percentMode: "used" }) === "M 14%")
+    check("worst", Model.barText(report, {}) === "Weekly 80%")
+    check("all", Model.barText(report, { barWindows: "all" }) === "Rolling 98% \u00b7 Weekly 80% \u00b7 Monthly 86%")
+    check("month", Model.barText(report, { barWindows: "month" }) === "Monthly 86%")
+    check("used", Model.barText(report, { barWindows: "month", percentMode: "used" }) === "Monthly 14%")
     check("worst switches", Model.worstWindow({
       rolling: { available: true, percent: 10, remaining: 90 },
       weekly: { available: true, percent: 95, remaining: 5 },
@@ -43,7 +43,7 @@ Item {
     var segments = Model.barSegments(report, { barWindows: "all" })
     var segmentText = ""
     for (var si = 0; si < segments.length; si++) segmentText += segments[si].text
-    check("bar segments all", segmentText === "5h 98% \u00b7 7d 80% \u00b7 M 86%")
+    check("bar segments all", segmentText === "Rolling 98% \u00b7 Weekly 80% \u00b7 Monthly 86%")
     check("bar segment label uncolored", segments[0].tone === "none")
     check("bar segment percentage colored", segments[1].tone === "normal" && segments[1].text === "98%")
 
@@ -59,20 +59,20 @@ Item {
     var critical = sampleReport()
     critical.windows.monthly.percent = 91
     critical.windows.monthly.remaining = 9
-    check("critical mark", Model.barText(critical, {}) === "M 9%!")
-    check("critical all mark", Model.barText(critical, { barWindows: "all" }).indexOf("M 9%!") !== -1)
+    check("critical mark", Model.barText(critical, {}) === "Monthly 9%!")
+    check("critical all mark", Model.barText(critical, { barWindows: "all" }).indexOf("Monthly 9%!") !== -1)
 
     var unavailable = sampleReport()
     unavailable.windows.weekly.available = false
-    check("unavailable skipped", Model.barText(unavailable, {}) === "M 86%")
-    check("month unavailable", Model.barText(unavailable, { barWindows: "month" }) === "M 86%")
+    check("unavailable skipped", Model.barText(unavailable, {}) === "Monthly 86%")
+    check("month unavailable", Model.barText(unavailable, { barWindows: "month" }) === "Monthly 86%")
 
     check("no data", Model.barText(null, {}) === "\u2014")
     check("no key", Model.barText({ state: "no-key", windows: {} }, {}) === "\u2014")
     check("auth expired", Model.barText({ state: "auth-expired", windows: {} }, {}) === "\u2014")
     check("stale shows cached", Model.barText({
       state: "stale", stale: true, windows: report.windows
-    }, {}) === "7d 80%")
+    }, {}) === "Weekly 80%")
 
     var vertical = Model.verticalParts(report, {})
     check("vertical label", vertical.label === "7d")

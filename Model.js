@@ -5,6 +5,7 @@
 
 var WINDOW_ORDER = ["rolling", "weekly", "monthly"]
 var WINDOW_LABELS = { rolling: "5h", weekly: "7d", monthly: "M" }
+var PERIOD_LABELS = { rolling: "Rolling", weekly: "Weekly", monthly: "Monthly" }
 var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 var DEFAULTS = {
@@ -55,6 +56,10 @@ function settingsWithDefaults(settings) {
 
 function windowLabel(name) {
   return WINDOW_LABELS[name] || name
+}
+
+function periodLabel(name) {
+  return PERIOD_LABELS[name] || name
 }
 
 function isAvailable(window) {
@@ -121,7 +126,7 @@ function barText(report, settings) {
     var parts = []
     for (var i = 0; i < names.length; i++) {
       var name = names[i]
-      parts.push(windowLabel(name) + " " + percentText(report.windows[name], cfg.percentMode)
+      parts.push(periodLabel(name) + " " + percentText(report.windows[name], cfg.percentMode)
         + "%" + criticalMark(report.windows[name], cfg))
     }
     return parts.join(" \u00b7 ")
@@ -131,7 +136,7 @@ function barText(report, settings) {
   var target = cfg.barWindows === "month" ? "monthly" : worstWindow(report.windows)
   if (!target) return "\u2014"
   var window = report.windows[target]
-  return windowLabel(target) + " " + percentText(window, cfg.percentMode) + "%"
+  return periodLabel(target) + " " + percentText(window, cfg.percentMode) + "%"
     + criticalMark(window, cfg)
 }
 
@@ -146,7 +151,7 @@ function barSegments(report, settings) {
     var window = report.windows[name]
     var suffix = "%" + (Number(window.remaining) <= cfg.critRemaining ? "!" : "")
     return [
-      { text: windowLabel(name) + " ", tone: "none" },
+      { text: periodLabel(name) + " ", tone: "none" },
       { text: percentText(window, cfg.percentMode) + suffix, tone: windowLevel(window, cfg) }
     ]
   }
@@ -364,6 +369,7 @@ if (typeof module !== "undefined" && module.exports) {
     DEFAULTS: DEFAULTS,
     settingsWithDefaults: settingsWithDefaults,
     windowLabel: windowLabel,
+    periodLabel: periodLabel,
     isAvailable: isAvailable,
     availableNames: availableNames,
     worstWindow: worstWindow,

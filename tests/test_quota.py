@@ -199,15 +199,31 @@ class RunwayTests(unittest.TestCase):
         self.assertEqual(result["reason"], "insufficient")
 
     def test_runway_restarts_after_reset(self):
+        windows = {"weekly": {"available": True, "remaining": 50, "resetInSec": 86400}}
+        samples = []
+        for hours, value in ((4, 10), (3, 20), (2, 2), (1, 7), (0, 12)):
+            samples.append({"t": quota.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "weekly": value})
+        runway = quota.compute_runway(samples, windows, NOW)
+        self.assertEqual(runway["weekly"]["seconds"], 36000)
+
+    def test_runway_rolling_ignores_slide(self):
         windows = {"rolling": {"available": True, "remaining": 50, "resetInSec": 86400}}
         samples = []
         for hours, value in ((4, 10), (3, 20), (2, 2), (1, 7), (0, 12)):
             samples.append({"t": quota.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "rolling": value})
-        runway = quota.compute_runway(samples, windows, NOW)
-        self.assertEqual(runway["rolling"]["seconds"], 36000)
+        result = quota.compute_runway(samples, windows, NOW)["rolling"]
+        self.assertIsNone(result["seconds"])
+        self.assertEqual(result["reason"], "flat")
+
+    def test_runway_zero_percent_is_idle(self):
+        windows = {"rolling": {"available": True, "percent": 0, "remaining": 100, "resetInSec": 86400}}
+        result = quota.compute_runway([], windows, NOW)["rolling"]
+        self.assertIsNone(result["seconds"])
+        self.assertEqual(result["ratePerHour"], 0.0)
+        self.assertEqual(result["reason"], "flat")
 
     def test_runway_flat_is_idle(self):
-        windows = {"rolling": {"available": True, "remaining": 100, "resetInSec": 86400}}
+        windows = {"rolling": {"available": True, "percent": 50, "remaining": 50, "resetInSec": 86400}}
         samples = []
         for hours in (2, 1, 0):
             samples.append({

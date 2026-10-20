@@ -32,7 +32,7 @@ Column {
 
   SettingRow {
     label: "Bar display"
-    hint: "worst follows the window closest to its limit"
+    hint: "worst follows the period closest to its limit"
     foreground: root.foreground
     fontFamily: root.fontFamily
 
@@ -175,7 +175,7 @@ Column {
 
   SettingRow {
     label: "Notify on reset"
-    hint: "One notification when a window starts over"
+    hint: "One notification when a period resets"
     foreground: root.foreground
     fontFamily: root.fontFamily
 

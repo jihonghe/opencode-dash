@@ -21,12 +21,12 @@ Column {
   readonly property var runway: report && report.runway ? report.runway : ({})
   readonly property var samples: report && report.samples ? report.samples : []
   readonly property color dim: Qt.darker(foreground, 1.45)
-  readonly property real columnGap: Style.space(8)
-  readonly property real windowWidth: Style.space(44)
-  readonly property real burnWidth: Style.space(76)
-  readonly property real etaWidth: Style.space(64)
+  readonly property real columnGap: Style.space(10)
+  readonly property real periodWidth: Style.space(68)
+  readonly property real burnWidth: Style.space(72)
+  readonly property real etaWidth: Style.space(60)
   readonly property real runwayWidth: Math.max(Style.space(140),
-    width - windowWidth - burnWidth - etaWidth * 2 - columnGap * 4)
+    width - periodWidth - burnWidth - etaWidth * 2 - columnGap * 4)
   readonly property real latestSampleAge: {
     if (samples.length === 0) return -1
     var time = new Date(samples[samples.length - 1].t).getTime()
@@ -122,8 +122,8 @@ Column {
     spacing: root.columnGap
 
     Text {
-      width: root.windowWidth
-      text: "Window"
+      width: root.periodWidth
+      text: "Period"
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
@@ -185,8 +185,8 @@ Column {
         spacing: root.columnGap
 
         Text {
-          width: root.windowWidth
-          text: Model.windowLabel(modelData)
+          width: root.periodWidth
+          text: Model.periodLabel(modelData)
           color: root.foreground
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall

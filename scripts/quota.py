@@ -450,6 +450,10 @@ def compute_runway(
         if not window.get("available") or window.get("remaining") is None:
             result[name] = {"seconds": None, "reason": "unavailable"}
             continue
+        percent = window.get("percent")
+        if percent is not None and int(percent) == 0:
+            result[name] = {"seconds": None, "ratePerHour": 0.0, "reason": "flat"}
+            continue
         horizon = RUNWAY_HORIZON_SEC[name]
         points: List[Tuple[dt.datetime, int]] = []
         for sample in samples:
@@ -459,7 +463,9 @@ def compute_runway(
             age = (now - sample["_dt"]).total_seconds()
             if age < -60 or age > horizon:
                 continue
-            if points and value < points[-1][1]:
+            # The rolling window slides: a decrease can be old usage ageing out,
+            # not a reset. Weekly/monthly only decrease when the window resets.
+            if name != "rolling" and points and value < points[-1][1]:
                 points = []
             points.append((sample["_dt"], int(value)))
 
