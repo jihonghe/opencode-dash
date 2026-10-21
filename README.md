@@ -21,7 +21,7 @@ any future agent.
 - Only the percentage is colored; the period label and `%` stay in the
   foreground.
 - Panel: three quota periods, reset times/countdowns, and a Runway table
-  (`Period · Avg · Active`) projecting how long the current rate can last.
+  (`Period · Avg pace · Lasts`) projecting how long the current rate can last.
 - Threshold notifications through `notify-send`, deduplicated per period,
   level, and reset time.
 - Settings in the panel and in Setup → Plugins edit the same `shell.json`
@@ -127,16 +127,13 @@ settings page also shows the current cycle reset countdown from the official
 ### Runway
 
 The official endpoint only returns the **current** percentages. Runway is built
-from samples the plugin records each time it refreshes. The table has three
-columns, `Period · Avg · Active`, and each cell shows a rate and a projected
-duration, for example `13.2%/day → ≥ 4d 17h`.
+from samples the plugin records each time it refreshes. It is a single,
+wall-clock estimate per period:
 
-- **Avg** is the least-squares trend over all samples in the current period.
-  It uses wall-clock time, so idle periods count towards the average.
-- **Active** only uses intervals in which usage increased. Idle intervals and
-  gaps longer than `max(15 min, 2 × refresh interval + 60 s)` are ignored. At
-  least 3 active intervals and 30 minutes of active time are required;
-  otherwise the cell stays blank.
+- **Avg pace** is the least-squares trend over all samples in the current
+  period. It uses wall-clock time, so idle periods count towards the average.
+  This is deliberately conservative: it answers "at my overall pace, how long
+  will the remaining quota last?"
 - At least **3 samples** spanning **1 hour** are required, and the latest
   sample must be fresh (`≤ max(15 min, 2 × refresh interval)`). Until then, the
   Runway table is **not displayed at all** — no placeholders.
@@ -155,15 +152,19 @@ duration, for example `13.2%/day → ≥ 4d 17h`.
   reflects the **forecast**. They can differ: a green percentage with an amber
   runway means there is still quota, but the current rate will use it before
   the period resets.
-- If a period has no consumption at all (a flat rate), the Avg cell shows
-  `0.0%/h` and `≥ <reset countdown>`; Active stays blank. Insufficient sample
-  history is still hidden or blank.
+- If a period has no consumption at all (a flat rate), the row shows `0.0%/h`
+  and `≥ <reset countdown>`. Insufficient sample history is hidden.
 - In the tooltip, `Resets in` shows only the countdown (`2m`, `5d 2h`); the
   panel shows `Resets in <countdown> (<absolute time>)`. The tooltip Runway
-  cell shows the same two lines (`Avg` / `Active`), and the footer shows the
-  sample span.
-- The Runway table legend: `Avg includes idle · Active usage only` and
-  `≥ lasts until reset · > after reset`.
+  cell shows `Avg <rate> → <duration>`, and the footer shows the sample span.
+- The Runway table legend: `Avg includes idle · ≥ lasts until reset ·
+  ~ runs out earlier`.
+
+There is intentionally no "active-only" estimate. It divides usage by the time
+spent in short active intervals, then extrapolates that rate across wall-clock
+time. With integer percentages sampled every few minutes, a single `+1%` tick
+can dominate the result and produce alarming projections such as `~4h`, even
+when the overall pace would last until reset.
 
 ### Data sources and privacy
 
@@ -257,7 +258,7 @@ CLI/TUI、ZCode，以及未来任何 Agent。
 - 默认显示剩余百分比，可在设置里切换为已用。
 - 状态颜色：健康绿色、剩余 ≤ 20% amber、≤ 10% 红色并带 `!`。
 - 只有百分比本身着色，周期标签和 `%` 保持前景色。
-- 面板：三个额度周期、重置时间和倒计时，以及 `Period · Avg · Active` 的
+- 面板：三个额度周期、重置时间和倒计时，以及 `Period · Avg pace · Lasts` 的
   Runway 表，按当前速度预估还能用多久。
 - 阈值通知由 `notify-send` 发送；按“周期 + 级别 + 重置时间”去重。
 - 面板设置页和 Setup → Plugins 修改同一份 `shell.json` 字段。
@@ -353,15 +354,11 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 
 ### Runway
 
-官方端点只返回**当前**百分比。Runway 来自插件每次刷新时记录的采样。表格有三列
-`Period · Avg · Active`，每个单元格显示“速度 → 预计时长”，例如
-`13.2%/day → ≥ 4d 17h`。
+官方端点只返回**当前**百分比。Runway 来自插件每次刷新时记录的采样，每个周期只给
+一个按实际时间计算的估算：
 
-- **Avg**：对当前周期内所有采样做最小二乘趋势。使用实际时间（wall clock），
-  空闲时间也计入平均。
-- **Active**：只统计用量上升的区间。空闲区间，以及超过
-  `max(15 min, 2 × 刷新间隔 + 60 s)` 的间隔会被忽略；至少需要 3 个活跃区间和
-  30 分钟活跃时间，否则该格留空。
+- **Avg pace**：对当前周期内所有采样做最小二乘趋势。使用实际时间（wall clock），
+  空闲时间也计入平均。它是保守口径，回答的是“按我的整体节奏，剩余额度还能撑多久”。
 - 至少需要 **3 个样本**、跨度至少 **1 小时**，且最新样本不能太旧
   （`≤ max(15 min, 2 × 刷新间隔)`）。在此之前，Runway 表**完全不显示**——
   没有任何占位内容。
@@ -375,13 +372,16 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
   - **红色**：剩余已到/低于严重阈值，或周期已经为空。
 - 百分比颜色表达**当前剩余**，Runway 颜色表达**预测**。两者可以不同：绿色百分比 +
   amber runway 表示“还剩不少，但当前速度会在重置前用完”。
-- 如果某个周期完全没有消耗（速度为 0），Avg 格显示 `0.0%/h` 和
-  `≥ <重置倒计时>`，Active 留空；样本历史不足时仍然隐藏或留空。
+- 如果某个周期完全没有消耗（速度为 0），该行显示 `0.0%/h` 和
+  `≥ <重置倒计时>`；样本历史不足时整表隐藏。
 - Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板显示
-  `Resets in <倒计时> (<绝对时间>)`。Tooltip 的 Runway 单元格同样显示
-  `Avg` / `Active` 两行，底部显示采样跨度。
-- Runway 表图例：`Avg includes idle · Active usage only` 和
-  `≥ lasts until reset · > after reset`。
+  `Resets in <倒计时> (<绝对时间>)`。Tooltip 的 Runway 单元格显示
+  `Avg <速度> → <时长>`，底部显示采样跨度。
+- Runway 表图例：`Avg includes idle · ≥ lasts until reset · ~ runs out earlier`。
+
+这里刻意**不再提供 Active-only 估算**：它把用量除以短暂活跃区间的时间，再把该速度
+外推到整个实际时间轴。百分比是整数、采样间隔只有几分钟，单次 `+1%` 跳变就会主导结果，
+得出 `~4h` 这类吓人的预测，即使整体节奏明明能撑到重置。
 
 ### 数据源与隐私
 

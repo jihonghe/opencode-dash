@@ -31,12 +31,11 @@
 | 7 | `resetsAt` 解析 | 本地时间与 `resetInSec` 正确；跨时区不偏 |
 | 8 | `resetsAt` 钳制 | rolling ≤5h+60s、weekly ≤7d+60s、monthly ≤31d+60s |
 | 9 | 周期重置 | weekly/monthly 下降视为重置并清空该段样本；rolling 下降不清空 |
-| 10 | 百分比为 0 | Avg `flat`、`Idle` / `≥ <重置>`；Active 为 `none` |
+| 10 | 百分比为 0 | Avg `flat`、`Idle` / `≥ <重置>` |
 | 11 | 窗口不可用 | `status != ok` → 该窗口 `available=false`，不参与 worst |
 | 12 | 输出脱敏 | stdout/stderr/缓存中**不含** key；只允许长度/存在性 |
 | 13 | Avg runway | <3 点或 <1h → `null`；否则数值合理 |
-| 14 | Active runway | 只看上升区间；长于 `max(15 min, 2×刷新间隔+60s)` 的间隔排除；<3 段或 <30 min → `insufficient` |
-| 15 | 采样修剪 / 通知去重 | 样本只留 30 天；同 `窗口+级别+resetsAt` 只产生一个 alert |
+| 14 | 采样修剪 / 通知去重 | 样本只留 30 天；同 `窗口+级别+resetsAt` 只产生一个 alert |
 
 运行方式建议：`pytest` 或 Python 内置 `unittest`；测试不需要网络。
 
@@ -62,7 +61,7 @@
 
 ### 2.3 Tooltip
 - [ ] 三个窗口 + 百分比 + 重置倒计时（不显示绝对时间）
-- [ ] Runway 两行 `Avg` / `Active`，速度 → 时长；样本不足时整列隐藏
+- [ ] Runway：`Avg <速度> → <时长>` 一行；样本不足时整列隐藏
 - [ ] 降级提示出现（cached at HH:mm）
 - [ ] `nowMs` 在显示时刷新，倒计时不使用创建时时钟
 - [ ] 鼠标移出后消失；不残留
@@ -71,7 +70,7 @@
 - [ ] 左键打开/关闭；Esc 关闭；点外部关闭
 - [ ] 三个窗口卡片：环形/条形与百分比一致
 - [ ] 倒计时每秒/每分钟更新
-- [ ] Runway：`Period · Avg · Active`；样本不足（<3 点 / <1h）时整块隐藏，Active 不足时留空
+- [ ] Runway：`Period · Avg pace · Lasts`；样本不足（<3 点 / <1h）时整块隐藏
 - [ ] Runway 时长颜色：绿色 / amber（阈值或重置前耗尽）/ 红色（严重或为空）
 - [ ] 图例与样本依据行完整，不溢出面板
 - [ ] 刷新按钮：立即更新（绕过缓存）

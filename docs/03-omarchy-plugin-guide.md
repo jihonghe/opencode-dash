@@ -165,7 +165,7 @@ BarWidget {
 结构建议：
 - 头部：标题 + 刷新 + 设置 + 关闭
 - 三个窗口卡片（`RingGauge` 或自绘进度条）
-- Runway 表（`Period / Avg / Active`）
+- Runway 表（`Period / Avg pace / Lasts`）
 - 设置页（与 schema 字段同名）
 
 面板打开方式：`root.panel.open()`；Esc / 点击外部关闭。

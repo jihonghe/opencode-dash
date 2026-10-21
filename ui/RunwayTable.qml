@@ -23,9 +23,9 @@ Column {
   readonly property color dim: Qt.darker(foreground, 1.45)
   readonly property real columnGap: Style.space(10)
   readonly property real periodWidth: Style.space(64)
-  readonly property real scenarioWidth: Math.max(Style.space(150),
-    (width - periodWidth - columnGap * 2) / 2)
-  readonly property real rateWidth: Style.space(78)
+  readonly property real rateWidth: Style.space(110)
+  readonly property real lastsWidth: Math.max(Style.space(110),
+    width - periodWidth - rateWidth - columnGap * 2)
   readonly property real latestSampleAge: {
     if (samples.length === 0) return -1
     var time = new Date(samples[samples.length - 1].t).getTime()
@@ -73,18 +73,8 @@ Column {
       windowFor(name).remaining, entry.reason)
   }
 
-  function activeLabel(name) {
-    var entry = entryFor(name)
-    return Model.runwayLabel(entry.activeSeconds, resetSeconds(name),
-      windowFor(name).remaining, entry.activeReason)
-  }
-
   function avgRateText(name) {
     return Model.burnText(entryFor(name).ratePerHour, name)
-  }
-
-  function activeRateText(name) {
-    return Model.burnText(entryFor(name).activeRatePerHour, name)
   }
 
   function colorForLevel(level) {
@@ -101,17 +91,10 @@ Column {
       cfg.warnRemaining, cfg.critRemaining, entry.reason))
   }
 
-  function activeColor(name) {
-    var entry = entryFor(name)
-    return colorForLevel(Model.runwayLevel(
-      windowFor(name).remaining, entry.activeSeconds, resetSeconds(name),
-      cfg.warnRemaining, cfg.critRemaining, entry.activeReason))
-  }
-
   function hasEstimate() {
     var names = ["rolling", "weekly", "monthly"]
     for (var i = 0; i < names.length; i++) {
-      if (avgLabel(names[i]) !== "" || activeLabel(names[i]) !== "") return true
+      if (avgLabel(names[i]) !== "") return true
     }
     return false
   }
@@ -136,23 +119,23 @@ Column {
       textFormat: Text.PlainText
     }
     Text {
-      width: root.scenarioWidth
-      text: "Avg"
+      width: root.rateWidth
+      text: "Avg pace"
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
-      horizontalAlignment: Text.AlignHCenter
+      horizontalAlignment: Text.AlignRight
       textFormat: Text.PlainText
     }
     Text {
-      width: root.scenarioWidth
-      text: "Active"
+      width: root.lastsWidth
+      text: "Lasts"
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
-      horizontalAlignment: Text.AlignHCenter
+      horizontalAlignment: Text.AlignRight
       textFormat: Text.PlainText
     }
   }
@@ -174,59 +157,31 @@ Column {
         textFormat: Text.PlainText
       }
 
-      Row {
-        width: root.scenarioWidth
-        spacing: 0
-
-        Text {
-          visible: root.avgLabel(modelData) !== ""
-          width: root.rateWidth
-          text: root.avgRateText(modelData)
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          horizontalAlignment: Text.AlignRight
-          textFormat: Text.PlainText
-        }
-        Text {
-          visible: root.avgLabel(modelData) !== ""
-          text: " \u2192 " + root.avgLabel(modelData)
-          color: root.avgColor(modelData)
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          textFormat: Text.PlainText
-        }
+      Text {
+        width: root.rateWidth
+        text: root.avgRateText(modelData)
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        horizontalAlignment: Text.AlignRight
+        textFormat: Text.PlainText
       }
 
-      Row {
-        width: root.scenarioWidth
-        spacing: 0
-
-        Text {
-          visible: root.activeLabel(modelData) !== ""
-          width: root.rateWidth
-          text: root.activeRateText(modelData)
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          horizontalAlignment: Text.AlignRight
-          textFormat: Text.PlainText
-        }
-        Text {
-          visible: root.activeLabel(modelData) !== ""
-          text: " \u2192 " + root.activeLabel(modelData)
-          color: root.activeColor(modelData)
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          textFormat: Text.PlainText
-        }
+      Text {
+        width: root.lastsWidth
+        text: root.avgLabel(modelData)
+        color: root.avgColor(modelData)
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        horizontalAlignment: Text.AlignRight
+        textFormat: Text.PlainText
       }
     }
   }
 
   Text {
     width: parent.width
-    text: "Avg includes idle  \u00b7  Active usage only\n\u2265 lasts until reset  \u00b7  > after reset"
+    text: "Avg includes idle  \u00b7  \u2265 lasts until reset  \u00b7  ~ runs out earlier"
     color: root.dim
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption

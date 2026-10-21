@@ -254,59 +254,6 @@ class RunwayTests(unittest.TestCase):
         self.assertEqual(result["ratePerHour"], 0.0)
         self.assertEqual(result["reason"], "flat")
 
-    def test_active_rate_excludes_idle(self):
-        windows = {"weekly": {"available": True, "percent": 10, "remaining": 50, "resetInSec": 100 * 3600}}
-        # Six 5-minute active intervals, then idle. Active time is 30 minutes.
-        points = [(4 - i / 12.0, 10 + i) for i in range(7)]
-        points.append((0, 16))
-        samples = []
-        for hours, value in points:
-            samples.append({
-                "t": quota.iso_z(NOW - dt.timedelta(hours=hours)),
-                "_dt": NOW - dt.timedelta(hours=hours),
-                "weekly": value,
-            })
-        result = quota.compute_runway(samples, windows, NOW)["weekly"]
-        self.assertEqual(result["reason"], "ok")
-        self.assertEqual(result["activeReason"], "ok")
-        self.assertAlmostEqual(result["ratePerHour"], 0.97, places=2)
-        self.assertAlmostEqual(result["activeRatePerHour"], 12.0, places=2)
-        self.assertEqual(result["activeSeconds"], 15000)
-
-    def test_active_gap_is_excluded(self):
-        windows = {"weekly": {"available": True, "percent": 10, "remaining": 50, "resetInSec": 100 * 3600}}
-        # 30 minutes of 5-minute active intervals, then a long gap.
-        points = [(4 - i / 12.0, 10 + i) for i in range(7)]
-        points.append((0.1, 30))
-        samples = []
-        for hours, value in points:
-            samples.append({
-                "t": quota.iso_z(NOW - dt.timedelta(hours=hours)),
-                "_dt": NOW - dt.timedelta(hours=hours),
-                "weekly": value,
-            })
-        result = quota.compute_runway(samples, windows, NOW)["weekly"]
-        self.assertEqual(result["activeReason"], "ok")
-        self.assertAlmostEqual(result["activeRatePerHour"], 12.0, places=2)
-
-    def test_active_needs_enough_history(self):
-        windows = {"weekly": {"available": True, "percent": 2, "remaining": 50, "resetInSec": 100 * 3600}}
-        samples = []
-        for hours, value in ((2, 10), (1, 12), (0, 14)):
-            samples.append({
-                "t": quota.iso_z(NOW - dt.timedelta(hours=hours)),
-                "_dt": NOW - dt.timedelta(hours=hours),
-                "weekly": value,
-            })
-        result = quota.compute_runway(samples, windows, NOW)["weekly"]
-        self.assertEqual(result["activeReason"], "insufficient")
-
-    def test_active_zero_percent_is_none(self):
-        windows = {"weekly": {"available": True, "percent": 0, "remaining": 100, "resetInSec": 3600}}
-        result = quota.compute_runway([], windows, NOW)["weekly"]
-        self.assertEqual(result["reason"], "flat")
-        self.assertEqual(result["activeReason"], "none")
-
     def test_sample_trim(self):
         samples = [
             {"t": quota.iso_z(NOW - dt.timedelta(days=40)), "_dt": NOW - dt.timedelta(days=40), "rolling": 1},

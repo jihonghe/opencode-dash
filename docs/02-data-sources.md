@@ -1,6 +1,6 @@
 # 02 · 数据源、口径与查询
 
-> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg / Active）：Avg 含空闲时间，Active 只统计用量上升的区间；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
+> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg pace / Lasts）：只保留按实际时间、含空闲的 Avg 估算；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
 > 本文是实现 `scripts/quota.py` 的唯一依据。所有数字都要能在这里找到来源。
@@ -181,12 +181,9 @@ Python 用 `urllib.request` 即可；尊重 `https_proxy` 环境变量。禁止�
                 "resetsAt": "2026-11-17T14:35:30Z", "resetInSec": 2361496}
   },
   "runway": {
-    "rolling": {"seconds": 9395, "ratePerHour": 0.24, "reason": "ok",
-                "activeSeconds": null, "activeRatePerHour": null, "activeReason": "insufficient"},
-    "weekly":  {"seconds": 408166, "ratePerHour": 0.55, "reason": "ok",
-                "activeSeconds": 15387, "activeRatePerHour": 16.14, "activeReason": "ok"},
-    "monthly": {"seconds": 1103576, "ratePerHour": 0.26, "reason": "ok",
-                "activeSeconds": null, "activeRatePerHour": null, "activeReason": "insufficient"}
+    "rolling": {"seconds": 9395, "ratePerHour": 0.24, "reason": "ok"},
+    "weekly":  {"seconds": 408166, "ratePerHour": 0.55, "reason": "ok"},
+    "monthly": {"seconds": 1103576, "ratePerHour": 0.26, "reason": "ok"}
   },
   "samples": [{"t": "2026-10-21T14:31:35Z", "rolling": 7, "weekly": 31, "monthly": 19}],
   "alerts": []
@@ -196,8 +193,6 @@ Python 用 `urllib.request` 即可；尊重 `https_proxy` 环境变量。禁止�
 - `state`: `ok` | `no-key` | `auth-expired` | `stale` | `no-data`
 - `stale=true` 时 `windows` 来自缓存，`updatedAt` 是缓存时间
 - `runway.<period>.reason`: `ok` | `flat` | `insufficient` | `unavailable`
-- `runway.<period>.activeReason`: `ok` | `insufficient` | `none` | `unavailable`；
-  Active 需要至少 3 个活跃区间和 30 分钟活跃时间，否则 `activeSeconds` 为 `null`
 - `samples` 只保留最近 30 天；`alerts` 由插件用于发通知
 
 ---

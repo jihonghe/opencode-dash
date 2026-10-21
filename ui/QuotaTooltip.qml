@@ -109,19 +109,8 @@ PopupWindow {
       window.remaining, entry.reason)
   }
 
-  function activeLabel(name) {
-    var entry = entryFor(name)
-    var window = windowFor(name)
-    return Model.runwayLabel(entry.activeSeconds, resetSeconds(name, window),
-      window.remaining, entry.activeReason)
-  }
-
   function avgRateText(name) {
     return Model.burnText(entryFor(name).ratePerHour, name)
-  }
-
-  function activeRateText(name) {
-    return Model.burnText(entryFor(name).activeRatePerHour, name)
   }
 
   function colorForLevel(level) {
@@ -138,15 +127,8 @@ PopupWindow {
       root.cfg.warnRemaining, root.cfg.critRemaining, entry.reason))
   }
 
-  function activeColor(name) {
-    var entry = entryFor(name)
-    return colorForLevel(Model.runwayLevel(
-      windowFor(name).remaining, entry.activeSeconds, resetSeconds(name, windowFor(name)),
-      root.cfg.warnRemaining, root.cfg.critRemaining, entry.activeReason))
-  }
-
   function hasEstimate(name) {
-    return avgLabel(name) !== "" || activeLabel(name) !== ""
+    return avgLabel(name) !== ""
   }
 
   readonly property string sampleSpan: {
@@ -412,38 +394,6 @@ PopupWindow {
                 }
               }
 
-              Row {
-                width: parent.width
-                spacing: Style.space(3)
-                visible: root.activeLabel(modelData) !== ""
-
-                Text {
-                  width: Style.space(42)
-                  text: "Active"
-                  color: root.dim
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  textFormat: Text.PlainText
-                }
-                Text {
-                  width: Style.space(74)
-                  text: root.activeRateText(modelData)
-                  color: root.dim
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  horizontalAlignment: Text.AlignRight
-                  textFormat: Text.PlainText
-                }
-                Text {
-                  width: parent.width - Style.space(42) - Style.space(74) - 2 * Style.space(3)
-                  text: "\u2192 " + root.activeLabel(modelData)
-                  color: root.activeColor(modelData)
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.bodySmall
-                  horizontalAlignment: Text.AlignRight
-                  textFormat: Text.PlainText
-                }
-              }
             }
           }
         }

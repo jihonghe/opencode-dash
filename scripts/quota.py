@@ -451,42 +451,23 @@ def compute_runway(
     samples: Sequence[Dict[str, Any]],
     windows: Dict[str, Dict[str, Any]],
     now: dt.datetime,
-    refresh_interval_sec: int = 300,
 ) -> Dict[str, Dict[str, Any]]:
     """Estimate how long the current burn can continue.
 
-    Two views are produced for each period:
-      * average: least-squares slope over wall-clock samples (includes idle)
-      * active: positive deltas divided by the time spent in active intervals
-        (excludes idle gaps and gaps longer than the refresh cadence)
+    Uses a least-squares slope over wall-clock samples, so idle time is part of
+    the average. The projection is capped at the period reset.
     """
     result: Dict[str, Dict[str, Any]] = {}
-    refresh_interval_sec = max(60, min(3600, int(refresh_interval_sec)))
-    active_gap_sec = max(900, 2 * refresh_interval_sec + 60)
 
     for name in WINDOWS:
         window = windows.get(name) or {}
         if not window.get("available") or window.get("remaining") is None:
-            result[name] = {
-                "seconds": None,
-                "ratePerHour": None,
-                "reason": "unavailable",
-                "activeSeconds": None,
-                "activeRatePerHour": None,
-                "activeReason": "unavailable",
-            }
+            result[name] = {"seconds": None, "ratePerHour": None, "reason": "unavailable"}
             continue
 
         percent = window.get("percent")
         if percent is not None and int(percent) == 0:
-            result[name] = {
-                "seconds": None,
-                "ratePerHour": 0.0,
-                "reason": "flat",
-                "activeSeconds": None,
-                "activeRatePerHour": None,
-                "activeReason": "none",
-            }
+            result[name] = {"seconds": None, "ratePerHour": 0.0, "reason": "flat"}
             continue
 
         horizon = RUNWAY_HORIZON_SEC[name]
@@ -506,69 +487,33 @@ def compute_runway(
 
         remaining = float(window["remaining"])
         reset_in = window.get("resetInSec")
-
-        # Average burn: wall-clock slope, including idle time.
-        average: Dict[str, Any] = {"seconds": None, "ratePerHour": None, "reason": "insufficient"}
         span = (points[-1][0] - points[0][0]).total_seconds() if len(points) >= 2 else 0
-        if len(points) >= RUNWAY_MIN_POINTS and span >= RUNWAY_MIN_SPAN_SEC:
-            origin = points[0][0]
-            xs = [(point[0] - origin).total_seconds() for point in points]
-            ys = [point[1] for point in points]
-            mean_x = sum(xs) / len(xs)
-            mean_y = sum(ys) / len(ys)
-            denominator = sum((value - mean_x) ** 2 for value in xs)
-            if denominator > 0:
-                slope = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)) / denominator
-                if slope <= 0:
-                    average = {"seconds": None, "ratePerHour": 0.0, "reason": "flat"}
-                else:
-                    seconds = 0.0 if remaining <= 0 else remaining / slope
-                    if reset_in is not None:
-                        seconds = min(seconds, float(reset_in))
-                    average = {
-                        "seconds": int(max(0, round(seconds))),
-                        "ratePerHour": round(slope * 3600, 2),
-                        "reason": "ok",
-                    }
+        if len(points) < RUNWAY_MIN_POINTS or span < RUNWAY_MIN_SPAN_SEC:
+            result[name] = {"seconds": None, "ratePerHour": None, "reason": "insufficient"}
+            continue
 
-        # Active burn: only intervals where the percentage actually increased.
-        active: Dict[str, Any] = {
-            "seconds": None,
-            "ratePerHour": None,
-            "reason": "insufficient",
-        }
-        active_used = 0.0
-        active_time = 0.0
-        active_intervals = 0
-        for (previous_time, previous_value), (current_time, current_value) in zip(points, points[1:]):
-            delta_time = (current_time - previous_time).total_seconds()
-            if delta_time <= 0 or delta_time > active_gap_sec:
-                continue
-            delta_value = current_value - previous_value
-            if delta_value <= 0:
-                continue
-            active_used += delta_value
-            active_time += delta_time
-            active_intervals += 1
+        origin = points[0][0]
+        xs = [(point[0] - origin).total_seconds() for point in points]
+        ys = [point[1] for point in points]
+        mean_x = sum(xs) / len(xs)
+        mean_y = sum(ys) / len(ys)
+        denominator = sum((value - mean_x) ** 2 for value in xs)
+        if denominator <= 0:
+            result[name] = {"seconds": None, "ratePerHour": None, "reason": "insufficient"}
+            continue
 
-        if active_intervals >= 3 and active_time >= 1800:
-            active_rate = active_used / active_time
-            seconds = 0.0 if remaining <= 0 else remaining / active_rate
-            if reset_in is not None:
-                seconds = min(seconds, float(reset_in))
-            active = {
-                "seconds": int(max(0, round(seconds))),
-                "ratePerHour": round(active_rate * 3600, 2),
-                "reason": "ok",
-            }
+        slope = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)) / denominator
+        if slope <= 0:
+            result[name] = {"seconds": None, "ratePerHour": 0.0, "reason": "flat"}
+            continue
 
+        seconds = 0.0 if remaining <= 0 else remaining / slope
+        if reset_in is not None:
+            seconds = min(seconds, float(reset_in))
         result[name] = {
-            "seconds": average["seconds"],
-            "ratePerHour": average["ratePerHour"],
-            "reason": average["reason"],
-            "activeSeconds": active["seconds"],
-            "activeRatePerHour": active["ratePerHour"],
-            "activeReason": active["reason"],
+            "seconds": int(max(0, round(seconds))),
+            "ratePerHour": round(slope * 3600, 2),
+            "reason": "ok",
         }
 
     return result
@@ -700,7 +645,6 @@ def collect_report(
     notify_reset: bool = False,
     no_alerts: bool = False,
     plan_label: str = "OpenCode Go",
-    refresh_interval_sec: int = 300,
     force: bool = False,
     fetch: Optional[Callable[[str], Dict[str, Dict[str, Any]]]] = None,
 ) -> Dict[str, Any]:
@@ -729,7 +673,7 @@ def collect_report(
     if not key:
         report["state"] = "no-key"
         report["samples"] = _report_samples(samples)
-        report["runway"] = compute_runway(samples, {}, now, refresh_interval_sec)
+        report["runway"] = compute_runway(samples, {}, now)
         return report
 
     def use_cached(updated_ts: float, stale: bool) -> Dict[str, Any]:
@@ -739,7 +683,7 @@ def collect_report(
         report["stale"] = stale
         report["ok"] = not stale
         report["updatedAt"] = local_iso(updated_ts)
-        report["runway"] = compute_runway(samples, windows, now, refresh_interval_sec)
+        report["runway"] = compute_runway(samples, windows, now)
         report["samples"] = _report_samples(samples)
         return report
 
@@ -773,7 +717,7 @@ def collect_report(
         windows = build_windows(raw, now)
 
         samples = append_sample(cache_root, samples, now, windows)
-        runway = compute_runway(samples, windows, now, refresh_interval_sec)
+        runway = compute_runway(samples, windows, now)
         alerts = compute_alerts(
             windows,
             state,
@@ -834,7 +778,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--notify-reset", action="store_true", help="emit reset alerts")
     parser.add_argument("--no-alerts", action="store_true", help="do not emit alerts")
     parser.add_argument("--plan-label", default="OpenCode Go", help="label echoed in the output")
-    parser.add_argument("--refresh-interval", type=int, default=300, help="sampling interval in seconds")
     parser.add_argument("--db", default="", help="override opencode.db path")
     parser.add_argument("--auth", default="", help="override auth.json path")
     parser.add_argument("--cache-dir", default="", help="override cache directory")
@@ -855,7 +798,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 notify_reset=args.notify_reset,
                 no_alerts=args.no_alerts,
                 plan_label=args.plan_label,
-                refresh_interval_sec=args.refresh_interval,
                 force=args.force,
             )
         if args.debug:

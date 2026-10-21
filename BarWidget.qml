@@ -204,8 +204,7 @@ BarWidget {
       "--json",
       "--warn", String(localSettings.warnRemaining),
       "--crit", String(localSettings.critRemaining),
-      "--plan-label", String(localSettings.planLabel),
-      "--refresh-interval", String(localSettings.refreshIntervalSec)
+      "--plan-label", String(localSettings.planLabel)
     ]
     if (!localSettings.notifyEnabled) args.push("--no-alerts")
     if (localSettings.notifyReset) args.push("--notify-reset")

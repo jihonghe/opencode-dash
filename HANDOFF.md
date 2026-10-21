@@ -1,6 +1,6 @@
 # OpenCode Quota — 交接文档（给实现者）
 
-> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg / Active）：Avg 含空闲时间，Active 只统计用量上升的区间；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
+> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg pace / Lasts）：只保留按实际时间、含空闲的 Avg 估算；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
 > 交付对象：**ZCode**（长任务 / goal 模式）
@@ -32,7 +32,7 @@
 | 顶栏默认 | **worst**：只显示剩余最少的窗口（如 `M 86%`）；可选 `all` / `month` |
 | 百分比含义 | **剩余**（remaining）为默认；设置里可切 `used` |
 | 阈值 | 剩余 ≤ **20%** 警告、≤ **10%** 严重（带 `!`） |
-| 面板 | 三个窗口 + 重置倒计时 + Runway 表（Period / Avg / Active）+ 设置 |
+| 面板 | 三个窗口 + 重置倒计时 + Runway 表（Period / Avg pace / Lasts）+ 设置 |
 | Runway | 要（百分比斜率估算，不依赖美元） |
 | 趋势图 | **不做**（已移除；官方 API 不提供历史） |
 | Pace（已用% vs 时间%） | **不做**（用户明确不要，增加心智负担） |

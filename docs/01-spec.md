@@ -1,6 +1,6 @@
 # 01 · 功能规格
 
-> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg / Active）：Avg 含空闲时间，Active 只统计用量上升的区间；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
+> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg pace / Lasts）：只保留按实际时间、含空闲的 Avg 估算；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
 > 产品：**OpenCode Quota**（Omarchy 顶栏插件）
@@ -13,7 +13,7 @@
 
 **做**
 - 顶栏常驻：剩余额度（最紧窗口 / 全部窗口）
-- 悬停 tooltip：三个窗口 + 重置倒计时 + Runway（Avg / Active）
+- 悬停 tooltip：三个窗口 + 重置倒计时 + Runway（Avg）
 - 点击面板：窗口卡片、Runway 表、设置
 - 阈值通知（剩余 20% / 10%）
 - 支持 OpenCode v2（DB credential）与 v1（auth.json）
@@ -100,14 +100,13 @@ OpenCode Go · remaining                         updated 14:36
 Period    Left   Resets in                  Runway
 Rolling    93%   2h 37m            Avg      0.2%/h → ≥ 2h 37m
 Weekly     69%   4d 17h            Avg     13.2%/day → ≥ 4d 17h
-                                 Active  387.4%/day → ~4h 16m
 Monthly    81%   27d 7h            Avg      6.2%/day → ~12d 18h
 Official API · estimates from 15h 17m of samples
 ```
 
 - `Resets in` 只显示倒计时；面板显示 `Resets in <倒计时> (<绝对时间>)`
 - 百分比数字按状态着色（绿/amber/红），周期标签保持前景色
-- Runway 单元格两行：`Avg` / `Active`，速度 → 预计时长；颜色加在时长上
+- Runway 单元格一行：`Avg <速度> → <预计时长>`；颜色加在时长上
 - 降级时底部改为 `cached at HH:mm (API unavailable)`
 - 实现说明：顶栏共享 tooltip 是单色纯文本，这里使用自定义 QML hover card
   （`ui/QuotaTooltip.qml`）
@@ -125,12 +124,12 @@ Official API · estimates from 15h 17m of samples
 │  ◔ 81%  Monthly   Resets in 27d 7h (11-17 22:35)      │
 │                                                        │
 │  Runway                                                │
-│  Period      Avg                    Active             │
-│  Rolling   0.2%/h → ≥ 2h 37m                           │
-│  Weekly   13.2%/day → ≥ 4d 17h    387.4%/day → ~4h 16m │
-│  Monthly   6.2%/day → ~12d 18h                         │
-│  Avg includes idle · Active usage only                 │
-│  ≥ lasts until reset · > after reset                   │
+│  Period      Avg pace              Lasts               │
+│  Rolling       0.2%/h             ≥ 2h 37m             │
+│  Weekly       13.2%/day           ≥ 4d 17h             │
+│  Monthly       6.2%/day           ~12d 18h             │
+│  Avg includes idle · ≥ lasts until reset               │
+│  ~ runs out earlier                                    │
 │  Based on official API samples · 15h 17m · 265 points  │
 │  Official usage API · account-wide, all clients        │
 └────────────────────────────────────────────────────────┘
@@ -142,10 +141,8 @@ Official API · estimates from 15h 17m of samples
 - 倒计时与 `Resets in` 使用同一个值，并按周期上限钳制
 
 ### 5.2 Runway 表
-- 三列：`Period | Avg | Active`；每个单元格是 `速度 → 预计时长`
+- 三列：`Period | Avg pace | Lasts`；速度与预计时长分列，时长右对齐并着色
 - **Avg**：当前周期内所有采样的最小二乘趋势，使用实际时间（含空闲）
-- **Active**：只统计用量上升的区间；空闲区间和超过
-  `max(15 min, 2 × 刷新间隔 + 60 s)` 的间隔忽略；至少 3 个活跃区间、30 分钟活跃时间
 - 时长：`≥ <重置倒计时>` 能撑到重置；`~<时长>` 会在重置前用完；`0m` 已空；
   `Idle` 无消耗
 - 样本要求：≥3 点、跨度 ≥1h、最新样本足够新；否则整块隐藏
@@ -235,7 +232,7 @@ opencode-quota/
 ## 11. 验收（摘要）
 
 1. 顶栏：worst 自动切换；20%/10% 变色；`—`/降级正确
-2. 面板：三窗口、倒计时、Runway 表（Avg / Active）；开关正常
+2. 面板：三窗口、倒计时、Runway 表（Period / Avg pace / Lasts）；开关正常
 3. 设置：面板与 Setup 同步；shell 重启后保留
 4. 通知：每窗口每阈值每次重置只发一次；严重用 critical
 5. 数据：与 console 的百分比一致（±1% 取整/时间差）；无 key/断网不崩溃
