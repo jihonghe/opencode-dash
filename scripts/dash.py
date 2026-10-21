@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Data layer for OpenCode Dash.
 
-Collects subscription usage from the official OpenCode Go endpoint and local
-per-model usage from opencode.db. The output is a single JSON document for the
-QML widget.
+Collects subscription usage from the official OpenCode Go endpoint and returns a
+single JSON document for the QML widget.
 
 Security rules:
   * The API key is read only here and only used as an Authorization header.
   * It is never written to stdout/stderr, cache files, or exception text.
-  * The OpenCode database is always opened read-only.
+  * The OpenCode database is opened read-only, and only the credential table is
+    read; no session or message data is queried.
 """
 
 from __future__ import annotations
