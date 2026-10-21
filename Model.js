@@ -251,8 +251,8 @@ function fmtUpdated(iso) {
 function stateMessage(report) {
   if (!report) return "Waiting for the first reading."
   var state = report.state || "no-data"
-  if (state === "no-key") return "OpenCode Go credentials not found. Run OpenCode and sign in."
-  if (state === "auth-expired") return "OpenCode Go credentials expired. Run OpenCode to refresh them."
+  if (state === "no-key") return "OpenCode Go credentials not found. Run \"opencode auth login\" and choose OpenCode Go."
+  if (state === "auth-expired") return "OpenCode Go credentials expired. Run \"opencode auth login\" again."
   if (state === "no-data") return report.stale ? "API unavailable and no cached reading." : "Waiting for the first reading."
   if (state === "error") return "Could not read quota data."
   if (report.stale) return "Showing the last successful reading. API is currently unavailable."

@@ -58,6 +58,44 @@ omarchy plugin update jihonghe.opencode-quota
 omarchy plugin remove jihonghe.opencode-quota
 ```
 
+### First run
+
+The plugin never asks for an API key. It reuses the credential that OpenCode
+already stores.
+
+1. Sign in to OpenCode Go:
+
+   ```bash
+   opencode auth login
+   ```
+
+   Choose **OpenCode Go** and finish the browser/device flow.
+
+2. Verify the credential:
+
+   ```bash
+   opencode auth list
+   ```
+
+   It should show `OpenCode Go ... stored`.
+
+3. Restart the shell:
+
+   ```bash
+   omarchy restart shell
+   ```
+
+4. Select your plan in **Settings → Plan** (`OpenCode Go` or
+   `OpenCode Go Plus`). This is a display label only; the API does not report
+   the plan tier.
+
+5. If `opencode.ai` is reachable only through a proxy, export `https_proxy` in
+   the environment that starts `omarchy-shell`. The plugin honors standard
+   proxy variables; it does not configure one itself.
+
+Do not copy the key from `opencode.db` into the plugin. The plugin reads the
+credential read-only and never stores or logs it.
+
 ### Configuration
 
 Settings live inline in `~/.config/omarchy/shell.json` under this widget's
@@ -155,8 +193,9 @@ cache. Notifications are sent with `notify-send`; no systemd unit is installed.
 
 ### Troubleshooting
 
-- **Bar shows `—`**: no credentials, or the sign-in expired. Run OpenCode and
-  sign in to OpenCode Go.
+- **Bar shows `—`**: run `opencode auth list`. If it is missing, run
+  `opencode auth login` and choose OpenCode Go, then `omarchy restart shell`.
+  An expired credential is fixed the same way.
 - **Values look stale**: the API is unreachable; the last successful reading
   is shown dimmed. The panel footer says when it was cached.
 - **No Runway table**: wait until the plugin has at least 3 samples over
@@ -251,6 +290,41 @@ omarchy plugin update jihonghe.opencode-quota
 omarchy plugin remove jihonghe.opencode-quota
 ```
 
+### 首次使用
+
+插件不会要求你填写 API key；它直接复用 OpenCode 已经保存的凭据。
+
+1. 登录 OpenCode Go：
+
+   ```bash
+   opencode auth login
+   ```
+
+   选择 **OpenCode Go**，完成浏览器/设备登录。
+
+2. 验证凭据：
+
+   ```bash
+   opencode auth list
+   ```
+
+   应显示 `OpenCode Go ... stored`。
+
+3. 重启 shell：
+
+   ```bash
+   omarchy restart shell
+   ```
+
+4. 在 **Settings → Plan** 选择套餐（`OpenCode Go` 或 `OpenCode Go Plus`）。
+   这只影响显示标签；API 不返回套餐类型。
+
+5. 如果只有通过代理才能访问 `opencode.ai`，在启动 `omarchy-shell` 的环境里设置
+   `https_proxy`。插件尊重标准代理环境变量，不会自己配置代理。
+
+不要把 `opencode.db` 里的 key 复制到插件里。插件以只读方式读取凭据，不会保存或
+记录 key。
+
 ### 配置
 
 设置保存在 `~/.config/omarchy/shell.json` 中本 widget 的 layout entry 里。面板设置页
@@ -328,7 +402,9 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 
 ### 排障
 
-- **顶栏显示 `—`**：没有凭据或登录已过期。运行 OpenCode 并重新登录 OpenCode Go。
+- **顶栏显示 `—`**：先运行 `opencode auth list`；如果没有凭据，运行
+  `opencode auth login` 并选择 OpenCode Go，然后 `omarchy restart shell`。
+  登录过期也用同样方式重新登录。
 - **数值看起来是旧的**：API 不可达，显示上次成功读数并变暗；面板底部会标注缓存
   时间。
 - **没有 Runway 表**：等插件积累至少 3 个样本、跨度 1 小时，且最新样本足够新；
