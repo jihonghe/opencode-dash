@@ -13,7 +13,7 @@
 
 **做**
 - 顶栏常驻：剩余额度（最紧窗口 / 全部窗口）
-- 悬停 tooltip：三个窗口 + 重置倒计时 + Runway（Avg）
+- 悬停 tooltip：三个窗口 + 重置倒计时 + Runway（Avg pace / Lasts）
 - 点击面板：窗口卡片、Runway 表、设置
 - 阈值通知（剩余 20% / 10%）
 - 支持 OpenCode v2（DB credential）与 v1（auth.json）
@@ -96,17 +96,17 @@
 ## 4. Tooltip
 
 ```
-OpenCode Go · remaining                         updated 14:36
-Period    Left   Resets in                  Runway
-Rolling    93%   2h 37m            Avg      0.2%/h → ≥ 2h 37m
-Weekly     69%   4d 17h            Avg     13.2%/day → ≥ 4d 17h
-Monthly    81%   27d 7h            Avg      6.2%/day → ~12d 18h
+OpenCode Go · remaining                    updated 14:36
+Period    Left   Resets in   Avg pace          Lasts
+Rolling    93%   2h 37m         0.2%/h      ≥ 2h 37m
+Weekly     69%   4d 17h        13.2%/day    ≥ 4d 17h
+Monthly    81%   27d 7h         6.2%/day    ~12d 18h
 Official API · estimates from 15h 17m of samples
 ```
 
 - `Resets in` 只显示倒计时；面板显示 `Resets in <倒计时> (<绝对时间>)`
 - 百分比数字按状态着色（绿/amber/红），周期标签保持前景色
-- Runway 单元格一行：`Avg <速度> → <预计时长>`；颜色加在时长上
+- Tooltip 用 `Avg pace` / `Lasts` 两列；颜色只加在 `Lasts` 上
 - 降级时底部改为 `cached at HH:mm (API unavailable)`
 - 实现说明：顶栏共享 tooltip 是单色纯文本，这里使用自定义 QML hover card
   （`ui/QuotaTooltip.qml`）

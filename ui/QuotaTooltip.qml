@@ -30,12 +30,16 @@ PopupWindow {
   readonly property bool hasWindows: available.length > 0
   readonly property string stateText: Model.stateMessage(report)
   readonly property var samples: report && report.samples ? report.samples : []
-  readonly property real runwayLabelWidth: Style.space(30)
-  readonly property real runwayRateWidth: Style.space(62)
-  readonly property real runwayArrowWidth: Style.space(16)
-  readonly property real runwayLastsWidth: Style.space(68)
-  readonly property real runwayGroupWidth: runwayLabelWidth + runwayRateWidth
-    + runwayArrowWidth + runwayLastsWidth + 3 * Style.space(3)
+  readonly property real periodWidth: Style.space(56)
+  readonly property real percentWidth: Style.space(48)
+  readonly property real resetWidth: Style.space(60)
+  readonly property real rateWidth: Style.space(62)
+  readonly property real lastsWidth: Style.space(60)
+  readonly property real columnGap: Style.space(8)
+  readonly property real contentWidth: periodWidth + percentWidth + resetWidth
+    + rateWidth + lastsWidth + 4 * columnGap
+  readonly property real resetCellWidth: showRunway ? resetWidth
+    : contentWidth - periodWidth - percentWidth - 2 * columnGap
   readonly property bool fresh: {
     if (samples.length === 0) return false
     var time = new Date(samples[samples.length - 1].t).getTime()
@@ -53,7 +57,7 @@ PopupWindow {
   }
 
   color: "transparent"
-  implicitWidth: Style.space(428)
+  implicitWidth: contentWidth + 2 * Style.spacing.popupPadding
   implicitHeight: bubble.implicitHeight
 
   property bool revealed: false
@@ -272,10 +276,10 @@ PopupWindow {
 
         Row {
           width: parent.width
-          spacing: Style.space(10)
+          spacing: root.columnGap
 
           Text {
-            width: Style.space(56)
+            width: root.periodWidth
             text: "Period"
             color: root.dim
             font.family: root.fontFamily
@@ -284,7 +288,7 @@ PopupWindow {
             textFormat: Text.PlainText
           }
           Text {
-            width: Style.space(48)
+            width: root.percentWidth
             text: root.cfg.percentMode === "used" ? "Used" : "Left"
             color: root.dim
             font.family: root.fontFamily
@@ -294,8 +298,7 @@ PopupWindow {
             textFormat: Text.PlainText
           }
           Text {
-            width: parent.width - Style.space(56) - Style.space(48)
-              - (root.showRunway ? Style.space(210) + 3 * Style.space(10) : 2 * Style.space(10))
+            width: root.resetCellWidth
             text: "Resets in"
             color: root.dim
             font.family: root.fontFamily
@@ -306,8 +309,19 @@ PopupWindow {
           }
           Text {
             visible: root.showRunway
-            width: Style.space(210)
-            text: "Runway"
+            width: root.rateWidth
+            text: "Avg pace"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            horizontalAlignment: Text.AlignRight
+            textFormat: Text.PlainText
+          }
+          Text {
+            visible: root.showRunway
+            width: root.lastsWidth
+            text: "Lasts"
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -323,14 +337,14 @@ PopupWindow {
           delegate: Row {
             required property string modelData
             width: parent.width
-            spacing: Style.space(10)
+            spacing: root.columnGap
 
             readonly property var win: root.windows[modelData] ? root.windows[modelData] : ({})
             readonly property bool avail: Model.isAvailable(win)
             readonly property string level: Model.windowLevel(win, root.cfg)
 
             Text {
-              width: Style.space(56)
+              width: root.periodWidth
               text: Model.periodLabel(modelData)
               color: root.foreground
               font.family: root.fontFamily
@@ -338,7 +352,7 @@ PopupWindow {
               textFormat: Text.PlainText
             }
             Text {
-              width: Style.space(48)
+              width: root.percentWidth
               text: parent.avail
                 ? Model.percentText(parent.win, root.cfg.percentMode) + "%"
                   + (Number(parent.win.remaining) <= root.cfg.critRemaining ? "!" : "")
@@ -351,8 +365,7 @@ PopupWindow {
               textFormat: Text.PlainText
             }
             Text {
-              width: parent.width - Style.space(56) - Style.space(48)
-                - (root.showRunway ? Style.space(210) + 3 * Style.space(10) : 2 * Style.space(10))
+              width: root.resetCellWidth
               text: parent.avail
                 ? Model.fmtDuration(root.resetSeconds(modelData, parent.win))
                 : "no data"
@@ -363,52 +376,25 @@ PopupWindow {
               elide: Text.ElideRight
               textFormat: Text.PlainText
             }
-            Row {
-              visible: root.showRunway
-              width: Style.space(210)
-
-              Row {
-                x: parent.width - width
-                width: root.runwayGroupWidth
-                spacing: Style.space(3)
-                visible: root.avgLabel(modelData) !== ""
-
-                Text {
-                  width: root.runwayLabelWidth
-                  text: "Avg"
-                  color: root.dim
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  textFormat: Text.PlainText
-                }
-                Text {
-                  width: root.runwayRateWidth
-                  text: root.avgRateText(modelData)
-                  color: root.dim
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  horizontalAlignment: Text.AlignRight
-                  textFormat: Text.PlainText
-                }
-                Text {
-                  width: root.runwayArrowWidth
-                  text: "\u2192"
-                  color: root.dim
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  horizontalAlignment: Text.AlignHCenter
-                  textFormat: Text.PlainText
-                }
-                Text {
-                  width: root.runwayLastsWidth
-                  text: root.avgLabel(modelData)
-                  color: root.avgColor(modelData)
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.bodySmall
-                  horizontalAlignment: Text.AlignRight
-                  textFormat: Text.PlainText
-                }
-              }
+            Text {
+              visible: root.showRunway && root.avgLabel(modelData) !== ""
+              width: root.rateWidth
+              text: root.avgRateText(modelData)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              horizontalAlignment: Text.AlignRight
+              textFormat: Text.PlainText
+            }
+            Text {
+              visible: root.showRunway && root.avgLabel(modelData) !== ""
+              width: root.lastsWidth
+              text: root.avgLabel(modelData)
+              color: root.avgColor(modelData)
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              horizontalAlignment: Text.AlignRight
+              textFormat: Text.PlainText
             }
           }
         }

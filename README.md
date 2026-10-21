@@ -155,8 +155,8 @@ wall-clock estimate per period:
 - If a period has no consumption at all (a flat rate), the row shows `0.0%/h`
   and `≥ <reset countdown>`. Insufficient sample history is hidden.
 - In the tooltip, `Resets in` shows only the countdown (`2m`, `5d 2h`); the
-  panel shows `Resets in <countdown> (<absolute time>)`. The tooltip Runway
-  cell shows `Avg <rate> → <duration>`, and the footer shows the sample span.
+  panel shows `Resets in <countdown> (<absolute time>)`. The tooltip shows the
+  same `Avg pace` and `Lasts` columns, and the footer shows the sample span.
 - The Runway table legend: `Avg includes idle · ≥ lasts until reset ·
   ~ runs out earlier`.
 
@@ -375,8 +375,8 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 - 如果某个周期完全没有消耗（速度为 0），该行显示 `0.0%/h` 和
   `≥ <重置倒计时>`；样本历史不足时整表隐藏。
 - Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板显示
-  `Resets in <倒计时> (<绝对时间>)`。Tooltip 的 Runway 单元格显示
-  `Avg <速度> → <时长>`，底部显示采样跨度。
+  `Resets in <倒计时> (<绝对时间>)`。Tooltip 使用同样的
+  `Avg pace` / `Lasts` 两列，底部显示采样跨度。
 - Runway 表图例：`Avg includes idle · ≥ lasts until reset · ~ runs out earlier`。
 
 这里刻意**不再提供 Active-only 估算**：它把用量除以短暂活跃区间的时间，再把该速度
