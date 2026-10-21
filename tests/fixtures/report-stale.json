@@ -27,13 +27,19 @@
   },
   "runway": {
     "rolling": {
-      "seconds": 21600
+      "seconds": 21600,
+      "ratePerHour": 0.5,
+      "reason": "ok"
     },
     "weekly": {
-      "seconds": null
+      "seconds": null,
+      "ratePerHour": null,
+      "reason": "insufficient"
     },
     "monthly": {
-      "seconds": 1036800
+      "seconds": 1036800,
+      "ratePerHour": 0.2,
+      "reason": "ok"
     }
   },
   "samples": [

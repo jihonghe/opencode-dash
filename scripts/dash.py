@@ -765,7 +765,44 @@ def fixture_report(path: str) -> Dict[str, Any]:
         "samples": parsed.get("samples", []),
         "alerts": [],
     }
+    if not report["stale"]:
+        _refresh_fixture_times(report)
     return report
+
+
+def _refresh_fixture_times(report: Dict[str, Any]) -> None:
+    """Keep static UI fixtures fresh enough for the live widget."""
+    now = dt.datetime.now(dt.timezone.utc)
+    samples = report.get("samples") or []
+    parsed_times = []
+    for sample in samples:
+        if isinstance(sample, dict) and sample.get("t"):
+            try:
+                parsed_times.append(parse_iso(sample["t"]))
+            except Exception:
+                pass
+    if parsed_times:
+        shift = now - parsed_times[-1]
+        for sample in samples:
+            if not isinstance(sample, dict) or not sample.get("t"):
+                continue
+            try:
+                sample["t"] = iso_z(parse_iso(sample["t"]) + shift)
+            except Exception:
+                pass
+
+    for window in (report.get("windows") or {}).values():
+        if not isinstance(window, dict):
+            continue
+        reset_in = window.get("resetInSec")
+        if reset_in is None:
+            continue
+        try:
+            window["resetsAt"] = iso_z(now + dt.timedelta(seconds=int(reset_in)))
+        except (TypeError, ValueError):
+            pass
+
+    report["updatedAt"] = local_iso(now.timestamp())
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

@@ -35,12 +35,15 @@ widget's `shell.json` entry:
 
 Available fixtures:
 
-- `report-stale.json` — cached readings with runway values.
+- `report-stale.json` — cached readings with `stale=true`; the Runway table is
+  hidden until the API succeeds again.
 - `report-no-key.json` — signed-out state.
 - `report-auth-expired.json` — expired credentials.
-- `report-not-ready.json` — fewer than 3 samples; `Avg pace` should show
-  `Collecting` and `Lasts` should show `—`.
-- `report-idle.json` — one period is flat; both derived columns should show
-  `—`, while the other periods show numeric estimates.
+- `report-not-ready.json` — fewer than 3 samples; `Avg pace` shows `Collecting`
+  and `Lasts` shows `—`.
+- `report-idle.json` — one period is flat; both derived columns show `—` for
+  that period, while the other periods show numeric estimates.
 
-Reload the shell config or restart the shell after changing the fixture.
+Non-stale fixtures are shifted to the current time when loaded, so their
+samples and reset countdowns stay usable. Reload the shell config or restart
+the shell after changing the fixture.
