@@ -30,6 +30,12 @@ PopupWindow {
   readonly property bool hasWindows: available.length > 0
   readonly property string stateText: Model.stateMessage(report)
   readonly property var samples: report && report.samples ? report.samples : []
+  readonly property real runwayLabelWidth: Style.space(30)
+  readonly property real runwayRateWidth: Style.space(62)
+  readonly property real runwayArrowWidth: Style.space(16)
+  readonly property real runwayLastsWidth: Style.space(68)
+  readonly property real runwayGroupWidth: runwayLabelWidth + runwayRateWidth
+    + runwayArrowWidth + runwayLastsWidth + 3 * Style.space(3)
   readonly property bool fresh: {
     if (samples.length === 0) return false
     var time = new Date(samples[samples.length - 1].t).getTime()
@@ -363,11 +369,12 @@ PopupWindow {
 
               Row {
                 x: parent.width - width
-                width: implicitWidth
-                spacing: Style.space(4)
+                width: root.runwayGroupWidth
+                spacing: Style.space(3)
                 visible: root.avgLabel(modelData) !== ""
 
                 Text {
+                  width: root.runwayLabelWidth
                   text: "Avg"
                   color: root.dim
                   font.family: root.fontFamily
@@ -375,17 +382,30 @@ PopupWindow {
                   textFormat: Text.PlainText
                 }
                 Text {
+                  width: root.runwayRateWidth
                   text: root.avgRateText(modelData)
                   color: root.dim
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
+                  horizontalAlignment: Text.AlignRight
                   textFormat: Text.PlainText
                 }
                 Text {
-                  text: "\u2192 " + root.avgLabel(modelData)
+                  width: root.runwayArrowWidth
+                  text: "\u2192"
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  horizontalAlignment: Text.AlignHCenter
+                  textFormat: Text.PlainText
+                }
+                Text {
+                  width: root.runwayLastsWidth
+                  text: root.avgLabel(modelData)
                   color: root.avgColor(modelData)
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.bodySmall
+                  horizontalAlignment: Text.AlignRight
                   textFormat: Text.PlainText
                 }
               }
