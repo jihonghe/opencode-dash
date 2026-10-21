@@ -71,6 +71,9 @@ omarchy plugin update jihonghe.opencode-dash
 omarchy plugin remove jihonghe.opencode-dash
 ```
 
+Removing the plugin leaves cached samples in `~/.cache/opencode-dash/`; delete
+that directory if you want a completely clean removal.
+
 ### First run
 
 The plugin never asks for an API key. It reuses the credential that OpenCode
@@ -323,6 +326,9 @@ omarchy plugin enable jihonghe.opencode-dash
 omarchy plugin update jihonghe.opencode-dash
 omarchy plugin remove jihonghe.opencode-dash
 ```
+
+卸载插件后，`~/.cache/opencode-dash/` 里的采样缓存会保留；需要彻底清理时手动删除
+该目录即可。
 
 ### 首次使用
 
