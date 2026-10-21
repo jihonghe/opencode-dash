@@ -123,6 +123,16 @@ PopupWindow {
     return Model.burnText(entryFor(name).ratePerHour, name)
   }
 
+  function avgPaceText(name) {
+    var entry = entryFor(name)
+    if (entry.reason === "insufficient") return "Collecting"
+    if (entry.reason === "flat") {
+      return Number(windowFor(name).percent) === 0 ? "Idle" : "Flat"
+    }
+    if (entry.reason === "unavailable") return ""
+    return avgRateText(name)
+  }
+
   function colorForLevel(level) {
     if (level === "crit") return critColor
     if (level === "warn") return warnColor
@@ -383,7 +393,7 @@ PopupWindow {
             Text {
               visible: root.showRunway
               width: root.rateWidth
-              text: root.avgRateText(modelData)
+              text: root.avgPaceText(modelData)
               color: root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -395,7 +405,7 @@ PopupWindow {
               width: root.lastsWidth
               text: root.avgLabel(modelData) !== ""
                 ? root.avgLabel(modelData)
-                : (root.isCollecting(modelData) ? "Collecting" : "")
+                : (root.isCollecting(modelData) ? "\u2014" : "")
               color: root.avgLabel(modelData) !== "" ? root.avgColor(modelData) : root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.bodySmall
