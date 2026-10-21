@@ -102,7 +102,7 @@ Column {
   function hasEstimate() {
     var names = ["rolling", "weekly", "monthly"]
     for (var i = 0; i < names.length; i++) {
-      if (avgLabel(names[i]) !== "") return true
+      if (entryFor(names[i]).reason === "ok") return true
     }
     return false
   }
@@ -189,10 +189,10 @@ Column {
 
       Text {
         width: root.lastsWidth
-        text: root.avgLabel(modelData) !== ""
-          ? root.avgLabel(modelData)
-          : (root.isCollecting(modelData) ? "\u2014" : "")
-        color: root.avgLabel(modelData) !== "" ? root.avgColor(modelData) : root.dim
+        text: root.entryFor(modelData).reason === "ok"
+          ? root.avgLabel(modelData) : "\u2014"
+        color: root.entryFor(modelData).reason === "ok"
+          ? root.avgColor(modelData) : root.dim
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
         horizontalAlignment: Text.AlignRight

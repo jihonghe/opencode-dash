@@ -31,7 +31,7 @@
 | 7 | `resetsAt` 解析 | 本地时间与 `resetInSec` 正确；跨时区不偏 |
 | 8 | `resetsAt` 钳制 | rolling ≤5h+60s、weekly ≤7d+60s、monthly ≤31d+60s |
 | 9 | 周期重置 | weekly/monthly 下降视为重置并清空该段样本；rolling 下降不清空 |
-| 10 | 百分比为 0 | Avg `flat`；界面 `Avg pace=—`、`Lasts=≥ <重置>` |
+| 10 | 百分比为 0 | Avg `flat`；界面 `Avg pace=—`、`Lasts=—` |
 | 11 | 窗口不可用 | `status != ok` → 该窗口 `available=false`，不参与 worst |
 | 12 | 输出脱敏 | stdout/stderr/缓存中**不含** key；只允许长度/存在性 |
 | 13 | Avg runway | <3 点或 <1h → `null`；否则数值合理 |
@@ -70,7 +70,7 @@
 - [ ] 左键打开/关闭；Esc 关闭；点外部关闭
 - [ ] 三个窗口卡片：环形/条形与百分比一致
 - [ ] 倒计时每秒/每分钟更新
-- [ ] Runway：`Period · Avg pace · Lasts`；样本不足时 `Avg pace=Collecting`、`Lasts=—`，官方列仍可见；样本过期时整块隐藏
+- [ ] Runway：`Period · Avg pace · Lasts`；样本不足时 `Avg pace=Collecting`、`Lasts=—`；flat/unavailable 两列都是 `—`；无 `ok` 且无 `insufficient` 时隐藏
 - [ ] Runway 时长颜色：绿色 / amber（阈值或重置前耗尽）/ 红色（严重或为空）
 - [ ] 图例与样本依据行完整，不溢出面板
 - [ ] 刷新按钮：立即更新（绕过缓存）

@@ -146,7 +146,7 @@ PopupWindow {
   }
 
   function hasEstimate(name) {
-    return avgLabel(name) !== ""
+    return entryFor(name).reason === "ok"
   }
 
   function isCollecting(name) {
@@ -401,10 +401,10 @@ PopupWindow {
             Text {
               visible: root.showRunway
               width: root.lastsWidth
-              text: root.avgLabel(modelData) !== ""
-                ? root.avgLabel(modelData)
-                : (root.isCollecting(modelData) ? "\u2014" : "")
-              color: root.avgLabel(modelData) !== "" ? root.avgColor(modelData) : root.dim
+              text: root.entryFor(modelData).reason === "ok"
+                ? root.avgLabel(modelData) : "\u2014"
+              color: root.entryFor(modelData).reason === "ok"
+                ? root.avgColor(modelData) : root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.bodySmall
               horizontalAlignment: Text.AlignRight

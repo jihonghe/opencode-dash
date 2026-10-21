@@ -151,9 +151,10 @@ wall-clock estimate per period:
   sample must be fresh (`≤ max(15 min, 2 × refresh interval)`). Until then, the
   `Avg pace` cell shows `Collecting` and `Lasts` shows `—` (the official columns
   stay visible); the estimate appears automatically after the first hour.
-- A dash (`—`) in `Avg pace` means there is no positive net rate yet (for
-  example, the window is idle or draining). `Lasts` still shows
-  `≥ <reset countdown>`.
+- A period without a positive numeric rate shows `—` in both `Avg pace` and
+  `Lasts` (idle, flat, draining, or unavailable). No duration is shown without
+  a rate. The Runway section is hidden when no period has a numeric rate and
+  none is collecting.
 - Duration labels: `≥ 4h 18m` means the rate lasts at least until reset (the
   same countdown as `Resets in`); `~3d 8h` means it runs out before reset;
   `0m` means the period is empty.
@@ -169,8 +170,8 @@ wall-clock estimate per period:
   reflects the **forecast**. They can differ: a green percentage with an amber
   runway means there is still quota, but the current rate will use it before
   the period resets.
-- If a period has no consumption at all (a flat rate), the row shows `0.0%/h`
-  and `≥ <reset countdown>`. Insufficient sample history is hidden.
+- A flat or idle period shows `—` in both derived columns; it never shows
+  `0.0%/h`. The official percentage and reset time remain visible above.
 - In the tooltip, `Resets in` shows only the countdown (`2m`, `5d 2h`); the
   panel shows `Resets in <countdown> (<absolute time>)`. The tooltip shows the
   same `Avg pace` and `Lasts` columns, and the footer shows the sample span.
@@ -391,8 +392,9 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 - 至少需要 **3 个样本**、跨度至少 **1 小时**，且最新样本不能太旧
   （`≤ max(15 min, 2 × 刷新间隔)`）。在此之前，`Avg pace` 格显示 `Collecting`，
   `Lasts` 显示 `—`，官方列仍然可见；满 1 小时后自动出现估算。
-- `Avg pace` 显示 `—` 表示还没有正净速率（例如窗口空闲或在滑出）；
-  `Lasts` 仍会显示 `≥ <重置倒计时>`。
+- 没有正速率的周期，`Avg pace` 和 `Lasts` 都显示 `—`（空闲、flat、滑出或不可用）。
+  不会出现“有速率才有时长”之外的组合。所有周期都没有正速率、也没有 `Collecting` 时，
+  整张 Runway 表隐藏。
 - 时长标签：`≥ 4h 18m` 表示按当前速度至少能撑到重置（和 `Resets in` 使用同一个
   倒计时）；`~3d 8h` 表示会在重置前用完；`0m` 表示已经为空。
 - 底部显示样本依据，例如
@@ -403,8 +405,8 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
   - **红色**：剩余已到/低于严重阈值，或周期已经为空。
 - 百分比颜色表达**当前剩余**，Runway 颜色表达**预测**。两者可以不同：绿色百分比 +
   amber runway 表示“还剩不少，但当前速度会在重置前用完”。
-- 如果某个周期完全没有消耗（速度为 0），该行显示 `0.0%/h` 和
-  `≥ <重置倒计时>`；样本历史不足时整表隐藏。
+- 完全空闲或 flat 的周期，两个衍生列都显示 `—`，不再显示 `0.0%/h`；
+  官方百分比和重置时间仍然保留。
 - Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板显示
   `Resets in <倒计时> (<绝对时间>)`。Tooltip 使用同样的
   `Avg pace` / `Lasts` 两列，底部显示采样跨度。

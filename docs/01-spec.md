@@ -154,10 +154,11 @@ Official API · estimates from 15h 17m of samples
 ### 5.2 Runway 表
 - 三列：`Period | Avg pace | Lasts`；速度与预计时长分列，时长右对齐并着色
 - **Avg**：当前周期内所有采样的最小二乘趋势，使用实际时间（含空闲）
-- `Avg pace`：正常显示速率；样本不足显示 `Collecting`；没有正净趋势显示 `—`
-- 时长：`≥ <重置倒计时>` 能撑到重置；`~<时长>` 会在重置前用完；`0m` 已空；
-  样本不足时 `Lasts` 显示 `—`
-- 样本要求：≥3 点、跨度 ≥1h、最新样本足够新；样本过期时整块隐藏
+- `Avg pace`：`ok` 显示速率；样本不足显示唯一的词 `Collecting`；其余情况显示 `—`
+- `Lasts`：只有 `ok` 显示时长；其余情况显示 `—`
+- 显示规则：至少一个周期为 `ok` 或 `insufficient` 时显示表格；全部为 flat/unavailable
+  时隐藏。样本过期时整块隐藏
+- 样本要求：≥3 点、跨度 ≥1h、最新样本足够新
 - 采样存 `~/.cache/opencode-quota/samples.jsonl`，保留 30 天
 - 颜色只加在预计时长上；百分比颜色仍表达当前剩余
 
