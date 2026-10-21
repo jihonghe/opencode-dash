@@ -357,17 +357,17 @@ PopupWindow {
               elide: Text.ElideRight
               textFormat: Text.PlainText
             }
-            Column {
+            Row {
               visible: root.showRunway
               width: Style.space(210)
 
               Row {
-                width: parent.width
-                spacing: Style.space(3)
+                x: parent.width - width
+                width: implicitWidth
+                spacing: Style.space(4)
                 visible: root.avgLabel(modelData) !== ""
 
                 Text {
-                  width: Style.space(42)
                   text: "Avg"
                   color: root.dim
                   font.family: root.fontFamily
@@ -375,25 +375,20 @@ PopupWindow {
                   textFormat: Text.PlainText
                 }
                 Text {
-                  width: Style.space(74)
                   text: root.avgRateText(modelData)
                   color: root.dim
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
-                  horizontalAlignment: Text.AlignRight
                   textFormat: Text.PlainText
                 }
                 Text {
-                  width: parent.width - Style.space(42) - Style.space(74) - 2 * Style.space(3)
                   text: "\u2192 " + root.avgLabel(modelData)
                   color: root.avgColor(modelData)
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.bodySmall
-                  horizontalAlignment: Text.AlignRight
                   textFormat: Text.PlainText
                 }
               }
-
             }
           }
         }
