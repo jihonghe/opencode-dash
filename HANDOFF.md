@@ -1,10 +1,10 @@
-# OpenCode Quota — 交接文档（给实现者）
+# OpenCode Dash — 交接文档（给实现者）
 
 > **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg pace / Lasts）：只保留按实际时间、含空闲的 Avg 估算；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
 > 交付对象：**ZCode**（长任务 / goal 模式）
-> 项目目录：`~/code/opencode-quota`
+> 项目目录：`~/code/opencode-dash`
 > 目标：为 **Omarchy（Quattro 4.x）** 开发一个**可发布**的顶栏插件，显示 **OpenCode 订阅（Go / Go Plus）** 的剩余额度。
 
 ---
@@ -23,7 +23,7 @@
 
 ## 1. 一句话
 
-给 Omarchy 顶栏加一个 **OpenCode Quota** widget：直接看到订阅额度还剩多少、什么时候重置；点开有详情面板、Runway 估算和设置；阈值到了会提醒。
+给 Omarchy 顶栏加一个 **OpenCode Dash** widget：直接看到订阅额度还剩多少、什么时候重置；点开有详情面板、Runway 估算和设置；阈值到了会提醒。
 
 ## 2. 已决定（不要重新论证）
 
@@ -43,7 +43,7 @@
 | 通知 | 插件内实现（`notify-send`），**不装 systemd 单元** |
 | UI 语言 | **英文界面**；README 中英双语 |
 | 发布标准 | MIT、README、截图、`omarchy plugin validate` 通过 |
-| 插件 id | 本地 `local.opencode-quota`；公开 `<GitHub 用户名>.opencode-quota` |
+| 插件 id | 本地 `local.opencode-dash`；公开 `<GitHub 用户名>.opencode-dash` |
 | 计划标签 | `planLabel` 默认 `OpenCode Go`（API 不返回套餐名，可改） |
 
 ## 3. 非目标
@@ -69,7 +69,7 @@
 
 | 阶段 | 内容 | 结束条件 |
 |---|---|---|
-| **M1** 数据层 | `scripts/quota.py`：key、API、DB、缓存、采样、`--json` | 真机返回正确 JSON；无 key/401/断网分类正确；key 不泄漏 |
+| **M1** 数据层 | `scripts/dash.py`：key、API、DB、缓存、采样、`--json` | 真机返回正确 JSON；无 key/401/断网分类正确；key 不泄漏 |
 | **M2** 顶栏 | `BarWidget.qml`：worst/all/month、颜色、tooltip、状态 | 最紧窗口自动切换；阈值变色；`—`/降级正确 |
 | **M3** 面板 | `Panel.qml`：三窗口、倒计时、Runway 表 | 打开/关闭正常；与顶栏一致 |
 | **M4** 设置 + 通知 | schema、面板设置持久化、阈值通知 | 设置重启后保留；每个阈值每窗口只通知一次 |
@@ -77,7 +77,7 @@
 
 ## 6. 完成定义（DoD）
 
-- `omarchy plugin validate ~/.config/omarchy/plugins/local.opencode-quota` 通过
+- `omarchy plugin validate ~/.config/omarchy/plugins/local.opencode-dash` 通过
 - `omarchy-shell shell ping` 返回 `ok`，shell 日志无 QML 报错
 - 顶栏在 top/bottom/left/right 四个方向、明暗主题下都可读
 - 三个窗口的数据与 console（±1% 取整/时间差）一致
@@ -123,12 +123,12 @@
 ## 9. 交付物
 
 ```
-opencode-quota/
+opencode-dash/
   manifest.json
   BarWidget.qml
   Panel.qml
   Model.js
-  scripts/quota.py
+  scripts/dash.py
   README.md
   LICENSE
   preview.png
@@ -136,4 +136,4 @@ opencode-quota/
   tests/
 ```
 
-> 实现说明（2026-10-20）：面板组件实际文件名为 `QuotaPanel.qml`，避免与 `qs.Ui.Panel` 基类同名；面板子组件放在 `ui/`。
+> 实现说明（2026-10-20）：面板组件实际文件名为 `DashPanel.qml`，避免与 `qs.Ui.Panel` 基类同名；面板子组件放在 `ui/`。

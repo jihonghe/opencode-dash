@@ -126,10 +126,10 @@ Item {
     check("eta idle", Model.etaLabel(74, 20, 0, 3600, "flat") === "> 1h")
     check("eta idle now", Model.etaLabel(15, 20, 0, 3600, "flat") === "now")
 
-    var config = { layout: { right: [{ id: "jihonghe.opencode-quota", barWindows: "all" }, { id: "omarchy.clock" }] } }
-    var saved = Model.savedBarSettings(config, "jihonghe.opencode-quota", { section: "right", index: 0 })
+    var config = { layout: { right: [{ id: "jihonghe.opencode-dash", barWindows: "all" }, { id: "omarchy.clock" }] } }
+    var saved = Model.savedBarSettings(config, "jihonghe.opencode-dash", { section: "right", index: 0 })
     check("saved settings", saved && saved.barWindows === "all")
-    check("saved by id", Model.savedBarSettings(config, "jihonghe.opencode-quota", null).barWindows === "all")
+    check("saved by id", Model.savedBarSettings(config, "jihonghe.opencode-dash", null).barWindows === "all")
 
     var pending = { barWindows: { value: "month", at: 1000 } }
     check("with pending", Model.withPending({ barWindows: "all" }, pending).barWindows === "month")

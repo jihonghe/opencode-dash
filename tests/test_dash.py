@@ -12,9 +12,9 @@ from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("quota", ROOT / "scripts" / "quota.py")
-quota = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(quota)
+SPEC = importlib.util.spec_from_file_location("dash", ROOT / "scripts" / "dash.py")
+dash = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(dash)
 
 KEY = "SUPERSECRET-TEST-KEY"
 NOW = dt.datetime(2026, 10, 20, 12, 0, 0, tzinfo=dt.timezone.utc)
@@ -52,7 +52,7 @@ class Base(unittest.TestCase):
             "cache_dir": str(self.cache),
         }
         options.update(kwargs)
-        return quota.collect_report(**options)
+        return dash.collect_report(**options)
 
     def write_auth(self, key=KEY):
         self.auth.write_text(json.dumps({"opencode-go": {"type": "api", "key": key}}), encoding="utf-8")
@@ -70,13 +70,13 @@ class Base(unittest.TestCase):
 class KeyTests(Base):
     def test_v2_key_from_credential_table(self):
         self.write_v2_db()
-        key, source = quota.read_key(str(self.db), str(self.auth))
+        key, source = dash.read_key(str(self.db), str(self.auth))
         self.assertEqual(key, KEY)
         self.assertEqual(source, "db")
 
     def test_v1_key_from_auth_json(self):
         self.write_auth()
-        key, source = quota.read_key(str(self.db), str(self.auth))
+        key, source = dash.read_key(str(self.db), str(self.auth))
         self.assertEqual(key, KEY)
         self.assertEqual(source, "auth.json")
 
@@ -110,23 +110,23 @@ class ApiStateTests(Base):
                 "available": True,
                 "percent": 0,
                 "remaining": 100,
-                "resetsAt": quota.iso_z(NOW + dt.timedelta(hours=10)),
+                "resetsAt": dash.iso_z(NOW + dt.timedelta(hours=10)),
             }
         }
-        windows = quota.rehydrate_windows(cached, NOW)
+        windows = dash.rehydrate_windows(cached, NOW)
         self.assertEqual(windows["rolling"]["resetInSec"], 5 * 3600 + 60)
 
     def test_reset_horizon_is_clamped(self):
         raw = ok_raw()
-        raw["rolling"]["resetsAt"] = quota.iso_z(NOW + dt.timedelta(hours=10))
-        windows = quota.build_windows(raw, NOW)
+        raw["rolling"]["resetsAt"] = dash.iso_z(NOW + dt.timedelta(hours=10))
+        windows = dash.build_windows(raw, NOW)
         self.assertEqual(windows["rolling"]["resetInSec"], 5 * 3600 + 60)
 
     def test_auth_expired(self):
         self.write_auth()
 
         def fail(_key):
-            raise quota.ApiError("auth")
+            raise dash.ApiError("auth")
 
         report = self.collect(fetch=fail)
         self.assertEqual(report["state"], "auth-expired")
@@ -136,24 +136,24 @@ class ApiStateTests(Base):
     def test_network_failure_uses_cache(self):
         self.write_auth()
         self.collect(fetch=lambda _key: ok_raw())
-        state = quota.load_state(self.cache)
+        state = dash.load_state(self.cache)
         self.assertTrue(state["windows"])
 
         def fail(_key):
-            raise quota.ApiError("network")
+            raise dash.ApiError("network")
 
         report = self.collect(now=NOW + dt.timedelta(seconds=120), fetch=fail)
         self.assertEqual(report["state"], "stale")
         self.assertTrue(report["stale"])
         self.assertEqual(report["windows"]["weekly"]["percent"], 20)
-        self.assertEqual(report["updatedAt"], quota.local_iso(float(state["fetchedAt"])))
+        self.assertEqual(report["updatedAt"], dash.local_iso(float(state["fetchedAt"])))
 
     def test_malformed_response_uses_cache(self):
         self.write_auth()
         self.collect(fetch=lambda _key: ok_raw())
 
         def fail(_key):
-            raise quota.ApiError("malformed")
+            raise dash.ApiError("malformed")
 
         report = self.collect(now=NOW + dt.timedelta(seconds=120), fetch=fail)
         self.assertEqual(report["state"], "stale")
@@ -163,7 +163,7 @@ class ApiStateTests(Base):
         self.write_auth()
 
         def fail(_key):
-            raise quota.ApiError("network")
+            raise dash.ApiError("network")
 
         report = self.collect(fetch=fail)
         self.assertEqual(report["state"], "no-data")
@@ -200,8 +200,8 @@ class RunwayTests(unittest.TestCase):
         }
         samples = []
         for hours, value in ((2, 10), (1, 15), (0, 20)):
-            samples.append({"t": quota.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "rolling": value, "weekly": None, "monthly": None})
-        runway = quota.compute_runway(samples, windows, NOW)
+            samples.append({"t": dash.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "rolling": value, "weekly": None, "monthly": None})
+        runway = dash.compute_runway(samples, windows, NOW)
         self.assertEqual(runway["rolling"]["seconds"], 36000)
         self.assertEqual(runway["rolling"]["reason"], "ok")
         self.assertIsNone(runway["weekly"]["seconds"])
@@ -209,10 +209,10 @@ class RunwayTests(unittest.TestCase):
     def test_runway_needs_enough_samples(self):
         windows = {"rolling": {"available": True, "remaining": 50, "resetInSec": 86400}}
         samples = [
-            {"t": quota.iso_z(NOW - dt.timedelta(hours=2)), "_dt": NOW - dt.timedelta(hours=2), "rolling": 10},
-            {"t": quota.iso_z(NOW), "_dt": NOW, "rolling": 20},
+            {"t": dash.iso_z(NOW - dt.timedelta(hours=2)), "_dt": NOW - dt.timedelta(hours=2), "rolling": 10},
+            {"t": dash.iso_z(NOW), "_dt": NOW, "rolling": 20},
         ]
-        result = quota.compute_runway(samples, windows, NOW)["rolling"]
+        result = dash.compute_runway(samples, windows, NOW)["rolling"]
         self.assertIsNone(result["seconds"])
         self.assertEqual(result["reason"], "insufficient")
 
@@ -220,22 +220,22 @@ class RunwayTests(unittest.TestCase):
         windows = {"weekly": {"available": True, "remaining": 50, "resetInSec": 86400}}
         samples = []
         for hours, value in ((4, 10), (3, 20), (2, 2), (1, 7), (0, 12)):
-            samples.append({"t": quota.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "weekly": value})
-        runway = quota.compute_runway(samples, windows, NOW)
+            samples.append({"t": dash.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "weekly": value})
+        runway = dash.compute_runway(samples, windows, NOW)
         self.assertEqual(runway["weekly"]["seconds"], 36000)
 
     def test_runway_rolling_ignores_slide(self):
         windows = {"rolling": {"available": True, "remaining": 50, "resetInSec": 86400}}
         samples = []
         for hours, value in ((4, 10), (3, 20), (2, 2), (1, 7), (0, 12)):
-            samples.append({"t": quota.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "rolling": value})
-        result = quota.compute_runway(samples, windows, NOW)["rolling"]
+            samples.append({"t": dash.iso_z(NOW - dt.timedelta(hours=hours)), "_dt": NOW - dt.timedelta(hours=hours), "rolling": value})
+        result = dash.compute_runway(samples, windows, NOW)["rolling"]
         self.assertIsNone(result["seconds"])
         self.assertEqual(result["reason"], "flat")
 
     def test_runway_zero_percent_is_idle(self):
         windows = {"rolling": {"available": True, "percent": 0, "remaining": 100, "resetInSec": 86400}}
-        result = quota.compute_runway([], windows, NOW)["rolling"]
+        result = dash.compute_runway([], windows, NOW)["rolling"]
         self.assertIsNone(result["seconds"])
         self.assertEqual(result["ratePerHour"], 0.0)
         self.assertEqual(result["reason"], "flat")
@@ -245,24 +245,24 @@ class RunwayTests(unittest.TestCase):
         samples = []
         for hours in (2, 1, 0):
             samples.append({
-                "t": quota.iso_z(NOW - dt.timedelta(hours=hours)),
+                "t": dash.iso_z(NOW - dt.timedelta(hours=hours)),
                 "_dt": NOW - dt.timedelta(hours=hours),
                 "rolling": 0,
             })
-        result = quota.compute_runway(samples, windows, NOW)["rolling"]
+        result = dash.compute_runway(samples, windows, NOW)["rolling"]
         self.assertIsNone(result["seconds"])
         self.assertEqual(result["ratePerHour"], 0.0)
         self.assertEqual(result["reason"], "flat")
 
     def test_sample_trim(self):
         samples = [
-            {"t": quota.iso_z(NOW - dt.timedelta(days=40)), "_dt": NOW - dt.timedelta(days=40), "rolling": 1},
-            {"t": quota.iso_z(NOW - dt.timedelta(days=1)), "_dt": NOW - dt.timedelta(days=1), "rolling": 2},
+            {"t": dash.iso_z(NOW - dt.timedelta(days=40)), "_dt": NOW - dt.timedelta(days=40), "rolling": 1},
+            {"t": dash.iso_z(NOW - dt.timedelta(days=1)), "_dt": NOW - dt.timedelta(days=1), "rolling": 2},
         ]
         cache = self.cache_dir()
-        kept = quota.write_samples(cache, samples, NOW)
+        kept = dash.write_samples(cache, samples, NOW)
         self.assertEqual(len(kept), 1)
-        self.assertEqual(len(quota.read_samples(cache)), 1)
+        self.assertEqual(len(dash.read_samples(cache)), 1)
 
     def cache_dir(self):
         tmp = tempfile.TemporaryDirectory()
@@ -280,32 +280,32 @@ class AlertTests(unittest.TestCase):
 
     def test_warn_and_crit_once_per_reset(self):
         state = {}
-        first = quota.compute_alerts(self.windows(), state, NOW, 20, 10, False, True)
+        first = dash.compute_alerts(self.windows(), state, NOW, 20, 10, False, True)
         levels = {(alert["window"], alert["level"]) for alert in first}
         self.assertIn(("rolling", "warn"), levels)
         self.assertIn(("weekly", "crit"), levels)
         self.assertNotIn(("monthly", "warn"), levels)
 
-        second = quota.compute_alerts(self.windows(), state, NOW, 20, 10, False, True)
+        second = dash.compute_alerts(self.windows(), state, NOW, 20, 10, False, True)
         self.assertEqual(second, [])
 
         changed = self.windows()
         changed["rolling"]["resetsAt"] = "2026-10-20T22:00:00Z"
-        third = quota.compute_alerts(changed, state, NOW, 20, 10, False, True)
+        third = dash.compute_alerts(changed, state, NOW, 20, 10, False, True)
         self.assertIn(("rolling", "warn"), {(a["window"], a["level"]) for a in third})
 
     def test_reset_alert_only_when_old_reset_passed(self):
-        state = {"lastResetsAt": {"rolling": quota.iso_z(NOW - dt.timedelta(hours=1))}}
-        alerts = quota.compute_alerts(self.windows(), state, NOW, 20, 10, True, True)
+        state = {"lastResetsAt": {"rolling": dash.iso_z(NOW - dt.timedelta(hours=1))}}
+        alerts = dash.compute_alerts(self.windows(), state, NOW, 20, 10, True, True)
         self.assertIn(("rolling", "reset"), {(a["window"], a["level"]) for a in alerts})
 
-        state = {"lastResetsAt": {"rolling": quota.iso_z(NOW + dt.timedelta(hours=1))}}
-        alerts = quota.compute_alerts(self.windows(), state, NOW, 20, 10, True, True)
+        state = {"lastResetsAt": {"rolling": dash.iso_z(NOW + dt.timedelta(hours=1))}}
+        alerts = dash.compute_alerts(self.windows(), state, NOW, 20, 10, True, True)
         self.assertNotIn(("rolling", "reset"), {(a["window"], a["level"]) for a in alerts})
 
     def test_disabled_notifications(self):
         state = {}
-        alerts = quota.compute_alerts(self.windows(), state, NOW, 20, 10, True, False)
+        alerts = dash.compute_alerts(self.windows(), state, NOW, 20, 10, True, False)
         self.assertEqual(alerts, [])
         self.assertIn("rolling", state["lastResetsAt"])
 
@@ -323,9 +323,9 @@ class SecurityTests(Base):
     def test_main_stdout_is_clean(self):
         self.write_auth()
         output = io.StringIO()
-        with mock.patch.object(quota, "fetch_usage", return_value=ok_raw()):
+        with mock.patch.object(dash, "fetch_usage", return_value=ok_raw()):
             with contextlib.redirect_stdout(output):
-                code = quota.main([
+                code = dash.main([
                     "--json", "--force",
                     "--db", str(self.db),
                     "--auth", str(self.auth),

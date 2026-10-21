@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "jihonghe.opencode-quota",
-  "name": "OpenCode Quota",
+  "id": "jihonghe.opencode-dash",
+  "name": "OpenCode Dash",
   "version": "1.0.0",
   "author": "jihonghe",
   "license": "MIT",
@@ -13,13 +13,19 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "OpenCode Quota",
+    "displayName": "OpenCode Dash",
     "description": "OpenCode Go / Go Plus usage and remaining quota.",
     "category": "AI",
     "aliases": [
       "opencode",
+      "dash",
+      "dashboard",
       "quota",
       "usage",
+      "runway",
+      "fuel",
+      "range",
+      "gauge",
       "go"
     ],
     "allowMultiple": false,

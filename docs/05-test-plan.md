@@ -4,7 +4,7 @@
 
 ---
 
-## 1. 数据层（`scripts/quota.py`）单元测试
+## 1. 数据层（`scripts/dash.py`）单元测试
 
 用临时目录模拟 `$HOME` / XDG，用 fixture 替代真实 API 和 DB。禁止在测试里使用真实 key。
 
@@ -103,7 +103,7 @@
 
 ## 3. 发布前验收
 
-- [ ] `omarchy plugin validate ~/.config/omarchy/plugins/local.opencode-quota` 通过
+- [ ] `omarchy plugin validate ~/.config/omarchy/plugins/local.opencode-dash` 通过
 - [ ] `omarchy-shell shell ping` → `ok`
 - [ ] shell 日志无 QML 报错
 - [ ] `omarchy plugin add <临时 git 仓库> --enable` 能从零装上

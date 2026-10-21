@@ -1,4 +1,4 @@
-// Pure display and settings helpers for OpenCode Quota.
+// Pure display and settings helpers for OpenCode Dash.
 //
 // Kept free of QML imports so the same file can be exercised by the QML
 // runtime (tests/model-test.qml) and by ordinary JavaScript tooling.

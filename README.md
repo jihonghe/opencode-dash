@@ -1,4 +1,4 @@
-# OpenCode Quota
+# OpenCode Dash
 
 [English](#english) · [中文](#中文)
 
@@ -8,7 +8,7 @@
 
 ## English
 
-OpenCode Quota is an Omarchy bar widget for the **OpenCode Go / Go Plus**
+OpenCode Dash is an Omarchy bar widget for the **OpenCode Go / Go Plus**
 subscription. It reads the official usage endpoint, so the percentages include
 **every client** that uses the subscription — the OpenCode CLI/TUI, ZCode, and
 any future agent.
@@ -53,22 +53,22 @@ fits on one screen.
 ### Install
 
 ```bash
-omarchy plugin add https://github.com/jihonghe/opencode-quota --enable
+omarchy plugin add https://github.com/jihonghe/opencode-dash --enable
 omarchy restart shell
 ```
 
 If the widget is installed but not in the bar yet:
 
 ```bash
-omarchy plugin enable jihonghe.opencode-quota
+omarchy plugin enable jihonghe.opencode-dash
 ```
 
-Move it with `omarchy bar move jihonghe.opencode-quota --section right`, or
+Move it with `omarchy bar move jihonghe.opencode-dash --section right`, or
 drag it in the bar. Update and remove with:
 
 ```bash
-omarchy plugin update jihonghe.opencode-quota
-omarchy plugin remove jihonghe.opencode-quota
+omarchy plugin update jihonghe.opencode-dash
+omarchy plugin remove jihonghe.opencode-dash
 ```
 
 ### First run
@@ -197,7 +197,7 @@ when the overall pace would last until reset.
 - The key is kept in memory only. It is never written to a file, cache, log,
   command line, or error message. The only host that receives it is
   `opencode.ai`.
-- Cache files live in `~/.cache/opencode-quota/` and contain percentages,
+- Cache files live in `~/.cache/opencode-dash/` and contain percentages,
   timestamps, and API samples only.
 - Standard `https_proxy` / `HTTPS_PROXY` environment variables are honored;
   no proxy is configured by the plugin itself.
@@ -205,7 +205,7 @@ when the overall pace would last until reset.
 
 ### How it works
 
-`BarWidget.qml` periodically runs `python3 scripts/quota.py --json`. The
+`BarWidget.qml` periodically runs `python3 scripts/dash.py --json`. The
 script reads the key, calls the usage endpoint, appends a sample, computes
 runway, and returns one JSON document. QML only renders it. A 60-second cache
 and a file lock keep multiple bar instances from duplicating API calls; manual
@@ -226,17 +226,17 @@ cache. Notifications are sent with `notify-send`; no systemd unit is installed.
 - **No notifications**: check `notify-send`, your notification daemon, and
   Do Not Disturb. Alerts are deduplicated per period/level/reset.
 - **Check the data layer manually**:
-  `python3 scripts/quota.py --json --force | python3 -m json.tool`
-- **Logs**: `journalctl --user -b --no-pager | grep -i opencode-quota`
+  `python3 scripts/dash.py --json --force | python3 -m json.tool`
+- **Logs**: `journalctl --user -b --no-pager | grep -i opencode-dash`
 - After installing or updating, run `omarchy restart shell` once.
 
 ### Development
 
 ```bash
 # Link the working tree instead of cloning
-ln -sfn "$PWD" ~/.config/omarchy/plugins/jihonghe.opencode-quota
+ln -sfn "$PWD" ~/.config/omarchy/plugins/jihonghe.opencode-dash
 omarchy-shell shell rescanPlugins
-omarchy plugin enable jihonghe.opencode-quota
+omarchy plugin enable jihonghe.opencode-dash
 
 # Tests (no network or real key required)
 python3 -m unittest discover -s tests -v
@@ -250,7 +250,8 @@ For UI state tests, add `"debugFixture": "/path/to/tests/fixtures/report-stale.j
 to the widget's `shell.json` entry. The script then returns that fixture
 instead of real data. Available fixtures: `report-stale.json`,
 `report-no-key.json`, `report-auth-expired.json`, `report-not-ready.json`
-(Runway table hidden), and `report-idle.json` (zero burn / idle period).
+(insufficient samples: `Collecting` / `—`), and `report-idle.json` (flat
+period: both derived cells `—`).
 Remove the setting when done.
 
 ### Credits and license
@@ -267,7 +268,7 @@ Remove the setting when done.
 
 ## 中文
 
-OpenCode Quota 是一个显示 **OpenCode Go / Go Plus** 订阅额度的 Omarchy 顶栏插件。
+OpenCode Dash 是一个显示 **OpenCode Go / Go Plus** 订阅额度的 Omarchy 顶栏插件。
 它直接读取官方 usage 端点，所以百分比覆盖**所有使用该订阅的客户端**——OpenCode
 CLI/TUI、ZCode，以及未来任何 Agent。
 
@@ -305,22 +306,22 @@ Tooltip 是面板同一份 `report` 的只读预览，数字不会分叉。新�
 ### 安装
 
 ```bash
-omarchy plugin add https://github.com/jihonghe/opencode-quota --enable
+omarchy plugin add https://github.com/jihonghe/opencode-dash --enable
 omarchy restart shell
 ```
 
 如果插件已安装但没出现在顶栏：
 
 ```bash
-omarchy plugin enable jihonghe.opencode-quota
+omarchy plugin enable jihonghe.opencode-dash
 ```
 
-用 `omarchy bar move jihonghe.opencode-quota --section right` 移动位置，或在顶栏上
+用 `omarchy bar move jihonghe.opencode-dash --section right` 移动位置，或在顶栏上
 直接拖动。更新和卸载：
 
 ```bash
-omarchy plugin update jihonghe.opencode-quota
-omarchy plugin remove jihonghe.opencode-quota
+omarchy plugin update jihonghe.opencode-dash
+omarchy plugin remove jihonghe.opencode-dash
 ```
 
 ### 首次使用
@@ -427,13 +428,13 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
   message、模型或 cost 数据。
 - key 只在内存中使用：不写文件、不写缓存、不写日志、不进命令行、不进错误信息。
   唯一接收 key 的地址是 `opencode.ai`。
-- 缓存位于 `~/.cache/opencode-quota/`，只包含百分比、时间和 API 采样。
+- 缓存位于 `~/.cache/opencode-dash/`，只包含百分比、时间和 API 采样。
 - 尊重标准 `https_proxy` / `HTTPS_PROXY` 环境变量；插件本身不硬编码代理。
 - 无遥测，不访问其他网络地址。
 
 ### 工作原理
 
-`BarWidget.qml` 定时运行 `python3 scripts/quota.py --json`。脚本读取 key、调用额度
+`BarWidget.qml` 定时运行 `python3 scripts/dash.py --json`。脚本读取 key、调用额度
 端点、写入采样、计算 runway，最后输出一份 JSON；QML 只负责渲染。60 秒缓存和文件
 锁避免多显示器重复请求；手动刷新（中键、面板按钮或面板内按 `r`）会绕过缓存。
 通知直接调用 `notify-send`，不安装 systemd 单元。
@@ -451,17 +452,17 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 - **没有通知**：检查 `notify-send`、通知守护进程和勿扰模式。通知按周期/级别/
   重置时间去重。
 - **手动检查数据层**：
-  `python3 scripts/quota.py --json --force | python3 -m json.tool`
-- **日志**：`journalctl --user -b --no-pager | grep -i opencode-quota`
+  `python3 scripts/dash.py --json --force | python3 -m json.tool`
+- **日志**：`journalctl --user -b --no-pager | grep -i opencode-dash`
 - 安装或更新后执行一次 `omarchy restart shell`。
 
 ### 开发
 
 ```bash
 # 用软链代替 clone
-ln -sfn "$PWD" ~/.config/omarchy/plugins/jihonghe.opencode-quota
+ln -sfn "$PWD" ~/.config/omarchy/plugins/jihonghe.opencode-dash
 omarchy-shell shell rescanPlugins
-omarchy plugin enable jihonghe.opencode-quota
+omarchy plugin enable jihonghe.opencode-dash
 
 # 测试（不需要网络或真实 key）
 python3 -m unittest discover -s tests -v
@@ -474,7 +475,8 @@ omarchy plugin validate .
 调试界面状态时，可以在 widget 的 `shell.json` entry 里加
 `"debugFixture": "/path/to/tests/fixtures/report-stale.json"`，脚本会直接返回该
 fixture。可用 fixture：`report-stale.json`、`report-no-key.json`、
-`report-auth-expired.json`、`report-not-ready.json`（Runway 表隐藏）。用完请删除。
+`report-auth-expired.json`、`report-not-ready.json`（样本不足：`Collecting` / `—`）、
+`report-idle.json`（flat 周期：两列都是 `—`）。用完请删除。
 
 ### 致谢与许可
 

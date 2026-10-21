@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Data layer for OpenCode Quota.
+"""Data layer for OpenCode Dash.
 
 Collects subscription usage from the official OpenCode Go endpoint and local
 per-model usage from opencode.db. The output is a single JSON document for the
@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 API_URL = "https://opencode.ai/zen/go/v1/usage"
-USER_AGENT = "opencode-quota/1.0"
+USER_AGENT = "opencode-dash/1.0"
 WINDOWS = ("rolling", "weekly", "monthly")
 WINDOW_LABELS = {"rolling": "5h", "weekly": "7d", "monthly": "M"}
 
@@ -69,7 +69,7 @@ def default_data_dir() -> Path:
 
 
 def default_cache_dir() -> Path:
-    return Path(os.environ.get("XDG_CACHE_HOME") or (_home() / ".cache")) / "opencode-quota"
+    return Path(os.environ.get("XDG_CACHE_HOME") or (_home() / ".cache")) / "opencode-dash"
 
 
 def default_db_path() -> Path:
@@ -769,7 +769,7 @@ def fixture_report(path: str) -> Dict[str, Any]:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="OpenCode Quota data collector")
+    parser = argparse.ArgumentParser(description="OpenCode Dash data collector")
     parser.add_argument("--json", action="store_true", help="emit JSON (always on)")
     parser.add_argument("--pretty", action="store_true", help="pretty-print JSON")
     parser.add_argument("--force", action="store_true", help="ignore the 60s cache")
@@ -802,7 +802,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
         if args.debug:
             sys.stderr.write(
-                "opencode-quota: state=%s windows=%d samples=%d\n"
+                "opencode-dash: state=%s windows=%d samples=%d\n"
                 % (report.get("state"), len(report.get("windows") or {}), len(report.get("samples") or []))
             )
         print(json.dumps(
@@ -814,7 +814,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
     except Exception as exc:  # never include request data or the key
         if args.debug:
-            sys.stderr.write("opencode-quota: internal error %s\n" % type(exc).__name__)
+            sys.stderr.write("opencode-dash: internal error %s\n" % type(exc).__name__)
         print(json.dumps({"ok": False, "state": "error", "error": type(exc).__name__}))
         return 1
 

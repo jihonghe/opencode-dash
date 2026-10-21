@@ -32,8 +32,8 @@
 ```json
 {
   "schemaVersion": 1,
-  "id": "local.opencode-quota",
-  "name": "OpenCode Quota",
+  "id": "local.opencode-dash",
+  "name": "OpenCode Dash",
   "version": "0.1.0",
   "author": "…",
   "license": "MIT",
@@ -41,7 +41,7 @@
   "kinds": ["bar-widget"],
   "entryPoints": { "barWidget": "BarWidget.qml" },
   "barWidget": {
-    "displayName": "OpenCode Quota",
+    "displayName": "OpenCode Dash",
     "description": "OpenCode Go / Go Plus usage and remaining quota.",
     "category": "AI",
     "aliases": ["opencode", "quota", "usage", "go"],
@@ -79,8 +79,8 @@
 ## 3. 设置怎么存
 
 - 设置是 `~/.config/omarchy/shell.json` 里**本 widget 的 entry 内联字段**（没有单独的 config 文件）
-- 例：`{"id":"local.opencode-quota","barWindows":"worst","warnRemaining":20}`
-- 不要建 `~/.config/opencode-quota/config.json`；那会绕开 Setup UI 和热重载
+- 例：`{"id":"local.opencode-dash","barWindows":"worst","warnRemaining":20}`
+- 不要建 `~/.config/opencode-dash/config.json`；那会绕开 Setup UI 和热重载
 
 ### 从 QML 写设置
 
@@ -93,7 +93,7 @@
 
 参考实现：`~/.config/omarchy/plugins/crmne.omastats/OmaStatsWidget.qml` 第 174–240 行；`Model.js` 的 `savedBarSettings`。
 
-> 简化方案（v1 可用）：面板调用 `bar.run("omarchy bar set local.opencode-quota warnRemaining 15")`。
+> 简化方案（v1 可用）：面板调用 `bar.run("omarchy bar set local.opencode-dash warnRemaining 15")`。
 > 但它会走 CLI/IPC，错误处理不如 registry API；**推荐 registry**。
 
 ---
@@ -118,7 +118,7 @@ import qs.Ui
 
 BarWidget {
   id: root
-  moduleName: "local.opencode-quota"
+  moduleName: "local.opencode-dash"
 
   readonly property string text: "M 86%"
 
@@ -182,14 +182,14 @@ BarWidget {
 
 ```bash
 # 1) 放到插件目录（开发期可用软链；注意热重载）
-ln -sfn ~/code/opencode-quota ~/.config/omarchy/plugins/local.opencode-quota
+ln -sfn ~/code/opencode-dash ~/.config/omarchy/plugins/local.opencode-dash
 
 # 2) 让 shell 发现/重载
 omarchy-shell shell rescanPlugins
 omarchy-shell shell ping          # 应返回 ok
 
 # 3) 校验 manifest
-omarchy plugin validate ~/.config/omarchy/plugins/local.opencode-quota
+omarchy plugin validate ~/.config/omarchy/plugins/local.opencode-dash
 
 # 4) 看状态
 omarchy plugin list
@@ -208,11 +208,11 @@ omarchy restart shell
 ## 7. 发布
 
 1. 仓库根目录放 `manifest.json` + 代码 + README + LICENSE
-2. id 用 `<你的 GitHub 用户名>.opencode-quota`（本地开发可用 `local.opencode-quota`，发布前改）
+2. id 用 `<你的 GitHub 用户名>.opencode-dash`（本地开发可用 `local.opencode-dash`，发布前改）
 3. README 必含：截图、依赖、安装命令、配置表、数据源、隐私、排障
 4. 安装：
    ```bash
-   omarchy plugin add https://github.com/<user>/opencode-quota --enable
+   omarchy plugin add https://github.com/<user>/opencode-dash --enable
    ```
 5. 更新：`omarchy plugin update <id>`（fast-forward pull）
 6. 校验：`omarchy plugin validate <目录>`

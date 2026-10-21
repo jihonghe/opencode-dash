@@ -20,7 +20,7 @@ BarWidget {
   property string lastError: ""
 
   readonly property string scriptPath: {
-    var url = Qt.resolvedUrl("scripts/quota.py").toString()
+    var url = Qt.resolvedUrl("scripts/dash.py").toString()
     if (url.indexOf("file://") === 0) url = url.slice(7)
     return decodeURIComponent(url)
   }
@@ -57,7 +57,7 @@ BarWidget {
   }
 
   IpcHandler {
-    target: "jihonghe.opencode-quota"
+    target: "jihonghe.opencode-dash"
     function toggle(): void { panel.toggle() }
     function open(): void { panel.open() }
     function close(): void { panel.close() }
@@ -130,9 +130,9 @@ BarWidget {
       try {
         var error = registry.setBarWidget(moduleName, key, value, { section: where.section, index: where.index })
         if (!error) return
-        console.warn("opencode-quota: setBarWidget failed (" + error + "), falling back")
+        console.warn("opencode-dash: setBarWidget failed (" + error + "), falling back")
       } catch (e) {
-        console.warn("opencode-quota: setBarWidget unavailable, falling back")
+        console.warn("opencode-dash: setBarWidget unavailable, falling back")
       }
     }
 
@@ -275,7 +275,7 @@ BarWidget {
 
       Quickshell.execDetached([
         "notify-send",
-        "-a", "OpenCode Quota",
+        "-a", "OpenCode Dash",
         "-u", urgency,
         "-t", "15000",
         title,
@@ -389,7 +389,7 @@ BarWidget {
     ? Math.max(barSize, Style.font.caption + Style.font.bodySmall + Style.space(2))
     : barSize
 
-  QuotaPanel {
+  DashPanel {
     id: panel
     bar: root.bar
     settings: root.localSettings
@@ -399,7 +399,7 @@ BarWidget {
     onRefreshRequested: root.refresh(true)
   }
 
-  QuotaTooltip {
+  DashTooltip {
     anchorItem: root
     bar: root.bar
     report: root.report

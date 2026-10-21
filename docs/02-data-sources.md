@@ -3,7 +3,7 @@
 > **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg pace / Lasts）：只保留按实际时间、含空闲的 Avg 估算；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
-> 本文是实现 `scripts/quota.py` 的唯一依据。所有数字都要能在这里找到来源。
+> 本文是实现 `scripts/dash.py` 的唯一依据。所有数字都要能在这里找到来源。
 
 ---
 
@@ -12,7 +12,7 @@
 ```
 GET https://opencode.ai/zen/go/v1/usage
 Authorization: Bearer <opencode-go key>
-User-Agent: opencode-quota/1.0
+User-Agent: opencode-dash/1.0
 ```
 
 - 这是**官方但未文档化**的端点；`opencode-quota`（1041★）等工具也用它。
@@ -123,7 +123,7 @@ key = json.loads(row[0])["key"] if row else None
 https_proxy=http://127.0.0.1:10801 \
 curl -sS --max-time 15 \
   -H "Authorization: Bearer $KEY" \
-  -H "User-Agent: opencode-quota/1.0" \
+  -H "User-Agent: opencode-dash/1.0" \
   https://opencode.ai/zen/go/v1/usage
 ```
 
@@ -163,7 +163,7 @@ Python 用 `urllib.request` 即可；尊重 `https_proxy` 环境变量。禁止�
 
 ## 5. 输出 JSON（给 QML 用）
 
-`quota.py --json` 输出（示例）：
+`dash.py --json` 输出（示例）：
 
 ```json
 {

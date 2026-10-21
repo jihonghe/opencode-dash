@@ -3,7 +3,7 @@
 > **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg pace / Lasts）：只保留按实际时间、含空闲的 Avg 估算；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
-> 产品：**OpenCode Quota**（Omarchy 顶栏插件）
+> 产品：**OpenCode Dash**（Omarchy 顶栏插件）
 > 目标用户：使用 OpenCode Go / Go Plus 的 Omarchy 用户
 > 一句话：直接看到订阅额度还剩多少、什么时候重置；点开有详情、Runway 估算和设置；阈值到了会提醒。
 
@@ -47,7 +47,7 @@ Tooltip 是同一份 `report` 的只读预览；新的详情和操作默认进�
 | 数据 | 来源 | 用途 |
 |---|---|---|
 | 三个窗口的已用百分比 + 重置时间 | `GET https://opencode.ai/zen/go/v1/usage`（Bearer key） | 顶栏、面板、通知 |
-| 每次刷新的百分比采样 | `~/.cache/opencode-quota/samples.jsonl` | Runway 估算 |
+| 每次刷新的百分比采样 | `~/.cache/opencode-dash/samples.jsonl` | Runway 估算 |
 | key | v2：DB `credential`；v1：`auth.json` | 仅用于调用端点 |
 
 **口径规则**
@@ -120,14 +120,14 @@ Official API · estimates from 15h 17m of samples
 - Tooltip 用 `Avg pace` / `Lasts` 两列；颜色只加在 `Lasts` 上
 - 降级时底部改为 `cached at HH:mm (API unavailable)`
 - 实现说明：顶栏共享 tooltip 是单色纯文本，这里使用自定义 QML hover card
-  （`ui/QuotaTooltip.qml`）
+  （`ui/DashTooltip.qml`）
 
 ---
 
 ## 5. 面板
 
 ```
-┌ OpenCode Quota                        [刷新] [设置] [×] ┐
+┌ OpenCode Dash                        [刷新] [设置] [×] ┐
 │  OpenCode Go                          updated 14:36   │
 │                                                        │
 │  ◔ 93%  Rolling   Resets in 2h 37m (17:13)            │
@@ -159,7 +159,7 @@ Official API · estimates from 15h 17m of samples
 - 显示规则：至少一个周期为 `ok` 或 `insufficient` 时显示表格；全部为 flat/unavailable
   时隐藏。样本过期时整块隐藏
 - 样本要求：≥3 点、跨度 ≥1h、最新样本足够新
-- 采样存 `~/.cache/opencode-quota/samples.jsonl`，保留 30 天
+- 采样存 `~/.cache/opencode-dash/samples.jsonl`，保留 30 天
 - 颜色只加在预计时长上；百分比颜色仍表达当前剩余
 
 ### 5.3 设置（面板内）
@@ -203,21 +203,21 @@ Official API · estimates from 15h 17m of samples
 ## 8. 架构
 
 ```
-opencode-quota/
+opencode-dash/
   manifest.json          # id、kinds: bar-widget、entryPoints、schema
   BarWidget.qml          # 顶栏
   Panel.qml              # 面板
   Model.js               # 格式化、状态映射、颜色、设置读写辅助
-  scripts/quota.py       # 数据层：key、API、DB、缓存、采样、runway
+  scripts/dash.py       # 数据层：key、API、DB、缓存、采样、runway
   README.md
   LICENSE
   preview.png
   tests/
 ```
 
-- QML 不写 HTTP/DB 逻辑：定时或手动调用 `quota.py --json`，只渲染
+- QML 不写 HTTP/DB 逻辑：定时或手动调用 `dash.py --json`，只渲染
 - 数据层输出稳定 JSON（见 `02-data-sources.md`）
-- 缓存/采样：`~/.cache/opencode-quota/state.json`、`samples.jsonl`
+- 缓存/采样：`~/.cache/opencode-dash/state.json`、`samples.jsonl`
 - 只读打开 DB（`mode=ro`）
 
 ---
@@ -234,7 +234,7 @@ opencode-quota/
 
 ## 10. 发布
 
-- 本地 id：`local.opencode-quota`；公开 id：`<GitHub 用户名>.opencode-quota`
+- 本地 id：`local.opencode-dash`；公开 id：`<GitHub 用户名>.opencode-dash`
 - MIT LICENSE
 - README：截图、依赖、安装、配置表、数据源（官方未文档化端点）、隐私、排障
 - 发布检查单：`omarchy plugin validate`、明暗主题、四方向、v1/v2、无 key/断网、截图、tag `v1.0.0`

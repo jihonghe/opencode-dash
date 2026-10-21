@@ -5,7 +5,7 @@ import qs.Commons as Commons
 import qs.Ui
 import "../Model.js" as Model
 
-// Hover card for the OpenCode Quota bar widget. The bar's shared tooltip is
+// Hover card for the OpenCode Dash bar widget. The bar's shared tooltip is
 // plain monochrome text, so this popup renders its own rows and can color the
 // percentage itself.
 PopupWindow {

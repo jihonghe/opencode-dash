@@ -112,7 +112,7 @@ Panel {
             Text {
               anchors.left: parent.left
               anchors.verticalCenter: parent.verticalCenter
-              text: root.settingsMode ? "Settings" : "OpenCode Quota"
+              text: root.settingsMode ? "Settings" : "OpenCode Dash"
               color: root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.title

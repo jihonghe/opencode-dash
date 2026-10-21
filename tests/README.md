@@ -30,17 +30,17 @@ These reports can be injected with the hidden `debugFixture` setting on the
 widget's `shell.json` entry:
 
 ```json
-{ "id": "jihonghe.opencode-quota", "debugFixture": "/path/to/tests/fixtures/report-stale.json" }
+{ "id": "jihonghe.opencode-dash", "debugFixture": "/path/to/tests/fixtures/report-stale.json" }
 ```
 
 Available fixtures:
 
-- `report-stale.json` — cached readings, runway values, trend data.
-- `report-no-key.json` — signed-out state with local model usage.
+- `report-stale.json` — cached readings with runway values.
+- `report-no-key.json` — signed-out state.
 - `report-auth-expired.json` — expired credentials.
-- `report-not-ready.json` — fewer than 3 samples / no runway; the Runway table
-  must be hidden and the remaining layout must fill the panel/tooltip.
-- `report-idle.json` — one period has zero burn; it must show `0.0%/h`,
-  `Lasts until reset`, and `after reset` instead of blank cells.
+- `report-not-ready.json` — fewer than 3 samples; `Avg pace` should show
+  `Collecting` and `Lasts` should show `—`.
+- `report-idle.json` — one period is flat; both derived columns should show
+  `—`, while the other periods show numeric estimates.
 
 Reload the shell config or restart the shell after changing the fixture.
