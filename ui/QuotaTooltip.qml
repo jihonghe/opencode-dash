@@ -417,6 +417,14 @@ PopupWindow {
         font.pixelSize: Style.font.caption
         textFormat: Text.PlainText
       }
+
+      Text {
+        text: "Click the widget for details"
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        textFormat: Text.PlainText
+      }
     }
   }
 }

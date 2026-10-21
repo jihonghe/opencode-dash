@@ -30,6 +30,19 @@ any future agent.
 - Official account-level data only; no local agent logs, no model/cost
   estimates, no telemetry.
 
+### How the three layers work
+
+| Layer | Interaction | What it shows | Purpose |
+|---|---|---|---|
+| Bar | always visible | the tightest period | notice at a glance |
+| Tooltip | hover | three periods + one forecast | a 3-second check |
+| Panel | click | the same facts + context + controls | inspect and adjust |
+
+The tooltip is a read-only preview of the same `report` the panel uses, so the
+numbers cannot diverge. New details and controls belong in the panel first; a
+feature moves into the tooltip only when it is essential for a quick check and
+fits on one screen.
+
 ### Requirements
 
 - Omarchy Quattro 4.x (tested on 4.0.6).
@@ -264,6 +277,17 @@ CLI/TUI、ZCode，以及未来任何 Agent。
 - 面板设置页和 Setup → Plugins 修改同一份 `shell.json` 字段。
 - 明暗主题、top/bottom/left/right 四个方向的顶栏。
 - 只使用官方账号级数据；不读本地 Agent 日志，不做模型/cost 估算，无遥测。
+
+### 三层信息
+
+| 层级 | 交互 | 显示内容 | 目的 |
+|---|---|---|---|
+| 顶栏 | 始终可见 | 最紧周期 | 余光确认 |
+| Tooltip | 悬停 | 三个周期 + 一个预测 | 3 秒快速查看 |
+| 面板 | 点击 | 同样的事实 + 上下文 + 操作 | 查看并调整 |
+
+Tooltip 是面板同一份 `report` 的只读预览，数字不会分叉。新的详情和操作优先放面板；
+只有“快速查看必需且一屏能放下”的功能才提升到 tooltip。
 
 ### 依赖
 
