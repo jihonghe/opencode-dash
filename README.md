@@ -149,7 +149,8 @@ wall-clock estimate per period:
   will the remaining quota last?"
 - At least **3 samples** spanning **1 hour** are required, and the latest
   sample must be fresh (`≤ max(15 min, 2 × refresh interval)`). Until then, the
-  Runway table is **not displayed at all** — no placeholders.
+  `Lasts` cell shows `Collecting` (the official columns stay visible); the
+  estimate appears automatically after the first hour.
 - Duration labels: `≥ 4h 18m` means the rate lasts at least until reset (the
   same countdown as `Resets in`); `~3d 8h` means it runs out before reset;
   `0m` means the period is empty; `Idle` means there was no consumption.
@@ -214,9 +215,10 @@ cache. Notifications are sent with `notify-send`; no systemd unit is installed.
   An expired credential is fixed the same way.
 - **Values look stale**: the API is unreachable; the last successful reading
   is shown dimmed. The panel footer says when it was cached.
-- **No Runway table**: wait until the plugin has at least 3 samples over
-  1 hour with a fresh latest sample. It appears automatically; nothing is
-  shown before that.
+- **`Lasts` says `Collecting`**: there are samples, but not yet 3 points over
+  1 hour (or the period just reset). Official values stay visible; the estimate
+  appears automatically. If the whole Runway table is hidden, the latest
+  sample is stale; check the network/API.
 - **No notifications**: check `notify-send`, your notification daemon, and
   Do Not Disturb. Alerts are deduplicated per period/level/reset.
 - **Check the data layer manually**:
@@ -384,8 +386,8 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 - **Avg pace**：对当前周期内所有采样做最小二乘趋势。使用实际时间（wall clock），
   空闲时间也计入平均。它是保守口径，回答的是“按我的整体节奏，剩余额度还能撑多久”。
 - 至少需要 **3 个样本**、跨度至少 **1 小时**，且最新样本不能太旧
-  （`≤ max(15 min, 2 × 刷新间隔)`）。在此之前，Runway 表**完全不显示**——
-  没有任何占位内容。
+  （`≤ max(15 min, 2 × 刷新间隔)`）。在此之前，`Lasts` 格显示 `Collecting`，
+  官方列仍然可见；满 1 小时后自动出现估算。
 - 时长标签：`≥ 4h 18m` 表示按当前速度至少能撑到重置（和 `Resets in` 使用同一个
   倒计时）；`~3d 8h` 表示会在重置前用完；`0m` 表示已经为空；`Idle` 表示没有消耗。
 - 底部显示样本依据，例如
@@ -436,8 +438,9 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
   登录过期也用同样方式重新登录。
 - **数值看起来是旧的**：API 不可达，显示上次成功读数并变暗；面板底部会标注缓存
   时间。
-- **没有 Runway 表**：等插件积累至少 3 个样本、跨度 1 小时，且最新样本足够新；
-  满足后会自动出现，在此之前不显示任何占位内容。
+- **`Lasts` 显示 `Collecting`**：已有采样，但还没满足 3 个点、跨度 1 小时
+  （或该周期刚重置）。官方数值仍然可见，估算会自动出现。整张 Runway 表隐藏
+  表示最新样本已过期，检查网络/API。
 - **没有通知**：检查 `notify-send`、通知守护进程和勿扰模式。通知按周期/级别/
   重置时间去重。
 - **手动检查数据层**：

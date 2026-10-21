@@ -34,7 +34,7 @@ Column {
   }
   readonly property bool fresh: latestSampleAge >= 0
     && latestSampleAge <= Math.max(900, 2 * cfg.refreshIntervalSec)
-  readonly property bool hasRows: hasEstimate() && fresh
+  readonly property bool hasRows: fresh && (hasEstimate() || hasCollecting())
   readonly property bool cached: report && report.stale
   readonly property string spanText: {
     if (samples.length === 0) return ""
@@ -95,6 +95,18 @@ Column {
     var names = ["rolling", "weekly", "monthly"]
     for (var i = 0; i < names.length; i++) {
       if (avgLabel(names[i]) !== "") return true
+    }
+    return false
+  }
+
+  function isCollecting(name) {
+    return entryFor(name).reason === "insufficient"
+  }
+
+  function hasCollecting() {
+    var names = ["rolling", "weekly", "monthly"]
+    for (var i = 0; i < names.length; i++) {
+      if (isCollecting(names[i])) return true
     }
     return false
   }
@@ -169,8 +181,10 @@ Column {
 
       Text {
         width: root.lastsWidth
-        text: root.avgLabel(modelData)
-        color: root.avgColor(modelData)
+        text: root.avgLabel(modelData) !== ""
+          ? root.avgLabel(modelData)
+          : (root.isCollecting(modelData) ? "Collecting" : "")
+        color: root.avgLabel(modelData) !== "" ? root.avgColor(modelData) : root.dim
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
         horizontalAlignment: Text.AlignRight

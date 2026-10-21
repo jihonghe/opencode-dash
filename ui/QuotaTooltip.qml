@@ -51,7 +51,7 @@ PopupWindow {
     if (!fresh || !report || !report.runway) return false
     var names = ["rolling", "weekly", "monthly"]
     for (var i = 0; i < names.length; i++) {
-      if (hasEstimate(names[i])) return true
+      if (hasEstimate(names[i]) || isCollecting(names[i])) return true
     }
     return false
   }
@@ -139,6 +139,10 @@ PopupWindow {
 
   function hasEstimate(name) {
     return avgLabel(name) !== ""
+  }
+
+  function isCollecting(name) {
+    return entryFor(name).reason === "insufficient"
   }
 
   readonly property string sampleSpan: {
@@ -377,7 +381,7 @@ PopupWindow {
               textFormat: Text.PlainText
             }
             Text {
-              visible: root.showRunway && root.avgLabel(modelData) !== ""
+              visible: root.showRunway
               width: root.rateWidth
               text: root.avgRateText(modelData)
               color: root.dim
@@ -387,10 +391,12 @@ PopupWindow {
               textFormat: Text.PlainText
             }
             Text {
-              visible: root.showRunway && root.avgLabel(modelData) !== ""
+              visible: root.showRunway
               width: root.lastsWidth
-              text: root.avgLabel(modelData)
-              color: root.avgColor(modelData)
+              text: root.avgLabel(modelData) !== ""
+                ? root.avgLabel(modelData)
+                : (root.isCollecting(modelData) ? "Collecting" : "")
+              color: root.avgLabel(modelData) !== "" ? root.avgColor(modelData) : root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.bodySmall
               horizontalAlignment: Text.AlignRight
