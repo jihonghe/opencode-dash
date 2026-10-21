@@ -1,6 +1,6 @@
 # OpenCode Quota — 交接文档（给实现者）
 
-> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Burn / Runway / Warn ETA / Crit ETA），样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
+> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg / Active）：Avg 含空闲时间，Active 只统计用量上升的区间；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
 > 交付对象：**ZCode**（长任务 / goal 模式）
@@ -23,7 +23,7 @@
 
 ## 1. 一句话
 
-给 Omarchy 顶栏加一个 **OpenCode Quota** widget：直接看到订阅额度还剩多少、什么时候重置；点开有详情面板、趋势、模型明细和设置；阈值到了会提醒。
+给 Omarchy 顶栏加一个 **OpenCode Quota** widget：直接看到订阅额度还剩多少、什么时候重置；点开有详情面板、Runway 估算和设置；阈值到了会提醒。
 
 ## 2. 已决定（不要重新论证）
 
@@ -32,9 +32,9 @@
 | 顶栏默认 | **worst**：只显示剩余最少的窗口（如 `M 86%`）；可选 `all` / `month` |
 | 百分比含义 | **剩余**（remaining）为默认；设置里可切 `used` |
 | 阈值 | 剩余 ≤ **20%** 警告、≤ **10%** 严重（带 `!`） |
-| 面板 | 三个窗口 + 重置倒计时 + runway + 趋势图 + 模型明细 + 设置 |
+| 面板 | 三个窗口 + 重置倒计时 + Runway 表（Period / Avg / Active）+ 设置 |
 | Runway | 要（百分比斜率估算，不依赖美元） |
-| 趋势 | 要（每日本地 cost + 剩余 % 折线） |
+| 趋势图 | **不做**（已移除；官方 API 不提供历史） |
 | Pace（已用% vs 时间%） | **不做**（用户明确不要，增加心智负担） |
 | JSON 导出 | **v1 不做**（等用户反馈） |
 | 配额美元换算 | **不做**（API 不给基数，本地 cost 口径不一致，硬换算会误导） |
@@ -71,7 +71,7 @@
 |---|---|---|
 | **M1** 数据层 | `scripts/quota.py`：key、API、DB、缓存、采样、`--json` | 真机返回正确 JSON；无 key/401/断网分类正确；key 不泄漏 |
 | **M2** 顶栏 | `BarWidget.qml`：worst/all/month、颜色、tooltip、状态 | 最紧窗口自动切换；阈值变色；`—`/降级正确 |
-| **M3** 面板 | `Panel.qml`：三窗口、倒计时、runway、趋势、模型表 | 打开/关闭正常；与顶栏一致；趋势有数据 |
+| **M3** 面板 | `Panel.qml`：三窗口、倒计时、Runway 表 | 打开/关闭正常；与顶栏一致 |
 | **M4** 设置 + 通知 | schema、面板设置持久化、阈值通知 | 设置重启后保留；每个阈值每窗口只通知一次 |
 | **M5** 发布 | README、截图、LICENSE、validate、tag | `omarchy plugin validate` 通过；别人按 README 能装 |
 

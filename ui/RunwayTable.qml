@@ -22,11 +22,10 @@ Column {
   readonly property var samples: report && report.samples ? report.samples : []
   readonly property color dim: Qt.darker(foreground, 1.45)
   readonly property real columnGap: Style.space(10)
-  readonly property real periodWidth: Style.space(68)
-  readonly property real burnWidth: Style.space(60)
-  readonly property real etaWidth: Style.space(60)
-  readonly property real runwayWidth: Math.max(Style.space(140),
-    width - periodWidth - burnWidth - etaWidth * 2 - columnGap * 4)
+  readonly property real periodWidth: Style.space(64)
+  readonly property real scenarioWidth: Math.max(Style.space(150),
+    (width - periodWidth - columnGap * 2) / 2)
+  readonly property real rateWidth: Style.space(78)
   readonly property real latestSampleAge: {
     if (samples.length === 0) return -1
     var time = new Date(samples[samples.length - 1].t).getTime()
@@ -35,16 +34,7 @@ Column {
   }
   readonly property bool fresh: latestSampleAge >= 0
     && latestSampleAge <= Math.max(900, 2 * cfg.refreshIntervalSec)
-  readonly property bool hasAnyRunway: {
-    var names = ["rolling", "weekly", "monthly"]
-    for (var i = 0; i < names.length; i++) {
-      var entry = runway[names[i]]
-      if (entry && ((entry.seconds !== null && entry.seconds !== undefined)
-          || entry.reason === "flat")) return true
-    }
-    return false
-  }
-  readonly property bool hasRows: hasAnyRunway && fresh
+  readonly property bool hasRows: hasEstimate() && fresh
   readonly property bool cached: report && report.stale
   readonly property string spanText: {
     if (samples.length === 0) return ""
@@ -60,56 +50,70 @@ Column {
   width: parent ? parent.width : implicitWidth
   spacing: Style.space(4)
 
-  function resetSeconds(name, window) {
-    if (!window || !window.resetsAt) return 0
+  function windowFor(name) {
+    return windows[name] || ({})
+  }
+
+  function entryFor(name) {
+    return runway[name] || ({})
+  }
+
+  function resetSeconds(name) {
+    var window = windowFor(name)
+    if (!window.resetsAt) return 0
     var reset = new Date(window.resetsAt).getTime()
     if (isNaN(reset)) return 0
     return Math.min(Model.resetHorizon(name),
       Math.max(0, Math.round((reset - nowMs) / 1000)))
   }
 
-  function rate(name) {
-    var entry = runway[name]
-    if (!entry || entry.ratePerHour === undefined || entry.ratePerHour === null) return null
-    return Number(entry.ratePerHour)
+  function avgLabel(name) {
+    var entry = entryFor(name)
+    return Model.runwayLabel(entry.seconds, resetSeconds(name),
+      windowFor(name).remaining, entry.reason)
   }
 
-  function runwaySeconds(name) {
-    var entry = runway[name]
-    if (!entry || entry.seconds === undefined || entry.seconds === null) return null
-    return Number(entry.seconds)
+  function activeLabel(name) {
+    var entry = entryFor(name)
+    return Model.runwayLabel(entry.activeSeconds, resetSeconds(name),
+      windowFor(name).remaining, entry.activeReason)
   }
 
-  function burnFor(name) {
-    return Model.burnText(rate(name), name)
+  function avgRateText(name) {
+    return Model.burnText(entryFor(name).ratePerHour, name)
   }
 
-  function runwayFor(name) {
-    var window = windows[name] || ({})
-    var entry = runway[name] || ({})
-    return Model.runwayLabel(runwaySeconds(name), resetSeconds(name, window), window.remaining, entry.reason)
+  function activeRateText(name) {
+    return Model.burnText(entryFor(name).activeRatePerHour, name)
   }
 
-  function etaFor(name, threshold) {
-    var window = windows[name] || ({})
-    var entry = runway[name] || ({})
-    return Model.etaLabel(window.remaining, threshold, rate(name), resetSeconds(name, window), entry.reason)
-  }
-
-  function runwayColor(name) {
-    var window = windows[name] || ({})
-    var entry = runway[name] || ({})
-    var level = Model.runwayLevel(window.remaining, runwaySeconds(name),
-      resetSeconds(name, window), cfg.warnRemaining, cfg.critRemaining, entry.reason)
+  function colorForLevel(level) {
     if (level === "crit") return critColor
     if (level === "warn") return warnColor
     if (level === "normal") return okColor
     return dim
   }
 
-  function etaColor(name, threshold, level) {
-    if (etaFor(name, threshold) !== "now") return dim
-    return level === "crit" ? critColor : warnColor
+  function avgColor(name) {
+    var entry = entryFor(name)
+    return colorForLevel(Model.runwayLevel(
+      windowFor(name).remaining, entry.seconds, resetSeconds(name),
+      cfg.warnRemaining, cfg.critRemaining, entry.reason))
+  }
+
+  function activeColor(name) {
+    var entry = entryFor(name)
+    return colorForLevel(Model.runwayLevel(
+      windowFor(name).remaining, entry.activeSeconds, resetSeconds(name),
+      cfg.warnRemaining, cfg.critRemaining, entry.activeReason))
+  }
+
+  function hasEstimate() {
+    var names = ["rolling", "weekly", "monthly"]
+    for (var i = 0; i < names.length; i++) {
+      if (avgLabel(names[i]) !== "" || activeLabel(names[i]) !== "") return true
+    }
+    return false
   }
 
   PanelSectionHeader {
@@ -132,8 +136,8 @@ Column {
       textFormat: Text.PlainText
     }
     Text {
-      width: root.burnWidth
-      text: "Burn"
+      width: root.scenarioWidth
+      text: "Avg"
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
@@ -142,33 +146,13 @@ Column {
       textFormat: Text.PlainText
     }
     Text {
-      width: root.runwayWidth
-      text: "Runway"
+      width: root.scenarioWidth
+      text: "Active"
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
       horizontalAlignment: Text.AlignHCenter
-      textFormat: Text.PlainText
-    }
-    Text {
-      width: root.etaWidth
-      text: "Warn " + root.cfg.warnRemaining + "%"
-      color: root.dim
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
-      font.bold: true
-      horizontalAlignment: Text.AlignRight
-      textFormat: Text.PlainText
-    }
-    Text {
-      width: root.etaWidth
-      text: "Crit " + root.cfg.critRemaining + "%"
-      color: root.dim
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
-      font.bold: true
-      horizontalAlignment: Text.AlignRight
       textFormat: Text.PlainText
     }
   }
@@ -176,78 +160,77 @@ Column {
   Repeater {
     model: ["rolling", "weekly", "monthly"]
 
-    delegate: Column {
+    delegate: Row {
       required property string modelData
-      required property int index
       width: root.width
-      spacing: Style.space(2)
+      spacing: root.columnGap
+
+      Text {
+        width: root.periodWidth
+        text: Model.periodLabel(modelData)
+        color: root.foreground
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        textFormat: Text.PlainText
+      }
 
       Row {
-        width: parent.width
-        spacing: root.columnGap
+        width: root.scenarioWidth
+        spacing: 0
 
         Text {
-          width: root.periodWidth
-          text: Model.periodLabel(modelData)
-          color: root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          textFormat: Text.PlainText
-        }
-        Text {
-          width: root.burnWidth
-          text: root.burnFor(modelData)
+          visible: root.avgLabel(modelData) !== ""
+          width: root.rateWidth
+          text: root.avgRateText(modelData)
           color: root.dim
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
-          horizontalAlignment: Text.AlignHCenter
+          horizontalAlignment: Text.AlignRight
           textFormat: Text.PlainText
         }
         Text {
-          width: root.runwayWidth
-          text: root.runwayFor(modelData)
-          color: root.runwayColor(modelData)
+          visible: root.avgLabel(modelData) !== ""
+          text: " \u2192 " + root.avgLabel(modelData)
+          color: root.avgColor(modelData)
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall
-          horizontalAlignment: Text.AlignHCenter
-          elide: Text.ElideRight
-          textFormat: Text.PlainText
-        }
-        Text {
-          width: root.etaWidth
-          text: root.etaFor(modelData, root.cfg.warnRemaining)
-          color: root.etaColor(modelData, root.cfg.warnRemaining, "warn")
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          horizontalAlignment: Text.AlignRight
-          textFormat: Text.PlainText
-        }
-        Text {
-          width: root.etaWidth
-          text: root.etaFor(modelData, root.cfg.critRemaining)
-          color: root.etaColor(modelData, root.cfg.critRemaining, "crit")
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          horizontalAlignment: Text.AlignRight
           textFormat: Text.PlainText
         }
       }
 
-      Rectangle {
-        visible: index < 2
-        width: parent.width
-        height: 1
-        color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.07)
+      Row {
+        width: root.scenarioWidth
+        spacing: 0
+
+        Text {
+          visible: root.activeLabel(modelData) !== ""
+          width: root.rateWidth
+          text: root.activeRateText(modelData)
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          horizontalAlignment: Text.AlignRight
+          textFormat: Text.PlainText
+        }
+        Text {
+          visible: root.activeLabel(modelData) !== ""
+          text: " \u2192 " + root.activeLabel(modelData)
+          color: root.activeColor(modelData)
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          textFormat: Text.PlainText
+        }
       }
     }
   }
 
   Text {
     width: parent.width
-    text: "\u2265 lasts until reset  \u00b7  > after reset"
+    text: "Avg includes idle  \u00b7  Active usage only\n\u2265 lasts until reset  \u00b7  > after reset"
     color: root.dim
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
+    wrapMode: Text.WordWrap
     textFormat: Text.PlainText
   }
 

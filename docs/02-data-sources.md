@@ -1,6 +1,6 @@
 # 02 · 数据源、口径与查询
 
-> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Burn / Runway / Warn ETA / Crit ETA），样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
+> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg / Active）：Avg 含空闲时间，Active 只统计用量上升的区间；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
 > 本文是实现 `scripts/quota.py` 的唯一依据。所有数字都要能在这里找到来源。
@@ -141,92 +141,14 @@ Python 用 `urllib.request` 即可；尊重 `https_proxy` 环境变量。禁止�
 
 ---
 
-## 3. 本地 DB：按模型用量
+## 3. 本地 DB：只读 credential
 
-### 3.1 v2 表：`session_message`
+插件只从 `credential` 表读取 key（见 2.1），**不再**查询 `session_message` / `message`，
+也不展示按模型/cost/按天的本地用量。原因：
 
-```sql
-select id, session_id, type, seq, time_created, time_updated, data
-from session_message;
-```
-
-`data` 是 JSON，关键字段：
-
-```json
-{
-  "model": {"id": "deepseek-v4.1-flash", "providerID": "opencode-go"},
-  "tokens": {
-    "input": 123,
-    "output": 45,
-    "reasoning": 6,
-    "cache": {"read": 6789, "write": 0}
-  },
-  "cost": 0.0123,
-  "time": {"created": 1792..., "completed": 1792...}
-}
-```
-
-过滤：`type like '%assistant%'` 且 `json_extract(data,'$.cost') is not null`。
-
-### 3.2 v1 表：`message`
-
-字段位置不同：`providerID` / `modelID` 在顶层，`tokens` 结构类似。实现时先探测表名：
-
-```sql
-select name from sqlite_master
-where type='table' and name in ('session_message','message')
-order by case name when 'session_message' then 0 else 1 end;
-```
-
-### 3.3 按模型聚合（当前订阅周期）
-
-`cycle_start_ms` 由 `monthly.resetsAt` 往前推一个月（或 `renewOverride`）：
-
-```sql
-select
-  json_extract(data,'$.model.id')         as model,
-  json_extract(data,'$.model.providerID') as provider,
-  count(*)                                as messages,
-  coalesce(sum(json_extract(data,'$.tokens.input')),0)    as input,
-  coalesce(sum(json_extract(data,'$.tokens.output')),0)   as output,
-  coalesce(sum(json_extract(data,'$.tokens.reasoning')),0) as reasoning,
-  coalesce(sum(json_extract(data,'$.tokens.cache.read')),0) as cache_read,
-  round(sum(json_extract(data,'$.cost')),4) as cost
-from session_message
-where type like '%assistant%'
-  and json_extract(data,'$.model.providerID') = 'opencode-go'
-  and time_created >= :cycle_start_ms
-group by model, provider
-order by cost desc;
-```
-
-### 3.4 按天聚合（趋势回填）
-
-```sql
-select
-  date(time_created/1000,'unixepoch','localtime') as day,
-  count(*) as messages,
-  round(sum(json_extract(data,'$.cost')),4) as cost
-from session_message
-where type like '%assistant%'
-  and json_extract(data,'$.model.providerID') = 'opencode-go'
-  and time_created >= :cycle_start_ms
-group by day
-order by day;
-```
-
-### 3.5 当前窗口本地用量（可选，只做参考）
-
-```sql
--- 最近 5 小时
-select round(sum(json_extract(data,'$.cost')),4)
-from session_message
-where type like '%assistant%'
-  and json_extract(data,'$.cost') is not null
-  and time_created > (strftime('%s','now')-5*3600)*1000;
-```
-
-**不要**把它和 API percent 混在一起换算。
+- 官方百分比是账号级，覆盖所有客户端；本地 DB 只记录 OpenCode CLI/TUI。
+- 本地 cost 与官方配额口径不一致，不能互相换算。
+- DB 以 `mode=ro` 打开，除 `credential` 外不读取其它表。
 
 ---
 
@@ -235,7 +157,6 @@ where type like '%assistant%'
 - 权威来源：`monthly.resetsAt`
 - 周期 = `[resetsAt - 1 个月, resetsAt)`
 - 例：`2026-11-17T14:35:30Z` → 周期 `2026-10-17T14:35:30Z` 至 `2026-11-17T14:35:30Z`（本机首次使用是 10-18，所以不影响当前统计）
-- `renewOverride`：仅当 API 不可用时使用；格式 ISO 8601，带时区
 - 到期后 API 会给出新的 `resetsAt`，无需自己加一个月；缓存里的旧值过期即丢弃
 
 ---
@@ -249,34 +170,35 @@ where type like '%assistant%'
   "ok": true,
   "state": "ok",
   "stale": false,
-  "updatedAt": "2026-10-20T20:35:00+08:00",
-  "localUpdatedAt": "2026-10-20T23:44:35+08:00",
+  "updatedAt": "2026-10-21T14:36:35+08:00",
   "planLabel": "OpenCode Go",
   "windows": {
-    "rolling": {"percent": 2, "remaining": 98, "resetsAt": "2026-10-20T16:08:43Z", "resetInSec": 14400},
-    "weekly":  {"percent": 20, "remaining": 80, "resetsAt": "2026-10-26T00:00:00Z", "resetInSec": 432000},
-    "monthly": {"percent": 13, "remaining": 87, "resetsAt": "2026-11-17T14:35:30Z", "resetInSec": 2240000}
+    "rolling": {"available": true, "status": "ok", "percent": 7, "remaining": 93,
+                "resetsAt": "2026-10-21T09:13:49Z", "resetInSec": 9395},
+    "weekly":  {"available": true, "status": "ok", "percent": 31, "remaining": 69,
+                "resetsAt": "2026-10-26T00:00:00Z", "resetInSec": 408166},
+    "monthly": {"available": true, "status": "ok", "percent": 19, "remaining": 81,
+                "resetsAt": "2026-11-17T14:35:30Z", "resetInSec": 2361496}
   },
   "runway": {
-    "rolling": {"seconds": 21600},
-    "weekly":  {"seconds": null},
-    "monthly": {"seconds": 1036800}
+    "rolling": {"seconds": 9395, "ratePerHour": 0.24, "reason": "ok",
+                "activeSeconds": null, "activeRatePerHour": null, "activeReason": "insufficient"},
+    "weekly":  {"seconds": 408166, "ratePerHour": 0.55, "reason": "ok",
+                "activeSeconds": 15387, "activeRatePerHour": 16.14, "activeReason": "ok"},
+    "monthly": {"seconds": 1103576, "ratePerHour": 0.26, "reason": "ok",
+                "activeSeconds": null, "activeRatePerHour": null, "activeReason": "insufficient"}
   },
-  "models": [
-    {"id": "deepseek-v4.1-flash", "messages": 1196, "cost": 3.85,
-     "tokens": {"input": 10710000, "output": 590000, "reasoning": 1220000, "cacheRead": 380890000},
-     "free": false}
-  ],
-  "daily": [{"date": "2026-10-18", "messages": 526, "cost": 1.10}],
-  "samples": [{"t": "2026-10-20T20:30:00Z", "rolling": 2, "weekly": 20, "monthly": 13}],
+  "samples": [{"t": "2026-10-21T14:31:35Z", "rolling": 7, "weekly": 31, "monthly": 19}],
   "alerts": []
 }
 ```
 
 - `state`: `ok` | `no-key` | `auth-expired` | `stale` | `no-data`
 - `stale=true` 时 `windows` 来自缓存，`updatedAt` 是缓存时间
-- `localUpdatedAt` 是 opencode.db 中最后一条带 cost 的 assistant 记录时间；它只反映 OpenCode CLI/TUI 的本地用量，其它客户端不写入该 DB
-- `alerts` 由插件用于发通知（也可在 QML 里判断）
+- `runway.<period>.reason`: `ok` | `flat` | `insufficient` | `unavailable`
+- `runway.<period>.activeReason`: `ok` | `insufficient` | `none` | `unavailable`；
+  Active 需要至少 3 个活跃区间和 30 分钟活跃时间，否则 `activeSeconds` 为 `null`
+- `samples` 只保留最近 30 天；`alerts` 由插件用于发通知
 
 ---
 

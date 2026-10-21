@@ -7,7 +7,6 @@ var WINDOW_ORDER = ["rolling", "weekly", "monthly"]
 var WINDOW_LABELS = { rolling: "5h", weekly: "7d", monthly: "M" }
 var PLAN_OPTIONS = ["OpenCode Go", "OpenCode Go Plus"]
 var PERIOD_LABELS = { rolling: "Rolling", weekly: "Weekly", monthly: "Monthly" }
-var PLAN_OPTIONS = ["OpenCode Go", "OpenCode Go Plus"]
 var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 var DEFAULTS = {

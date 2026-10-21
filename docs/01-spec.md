@@ -1,11 +1,11 @@
 # 01 · 功能规格
 
-> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Burn / Runway / Warn ETA / Crit ETA），样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
+> **2026-10-21 范围变更**：本地用量/模型明细/cost 已移除。插件只使用官方 `/zen/go/v1/usage`（账号级，覆盖所有客户端）；`opencode.db` 仅用于读取 credential key。趋势图已移除；面板改为 Runway 表（Period / Avg / Active）：Avg 含空闲时间，Active 只统计用量上升的区间；样本不足（<3 点或 <1h）或最新样本过期时整块隐藏。`showModelDetail`、`renewOverride` 已删除。
 
 
 > 产品：**OpenCode Quota**（Omarchy 顶栏插件）
 > 目标用户：使用 OpenCode Go / Go Plus 的 Omarchy 用户
-> 一句话：直接看到订阅额度还剩多少、什么时候重置；点开有详情、趋势、模型用量和设置；阈值到了会提醒。
+> 一句话：直接看到订阅额度还剩多少、什么时候重置；点开有详情、Runway 估算和设置；阈值到了会提醒。
 
 ---
 
@@ -13,8 +13,8 @@
 
 **做**
 - 顶栏常驻：剩余额度（最紧窗口 / 全部窗口）
-- 悬停 tooltip：三个窗口 + 重置倒计时 + 本周期模型用量
-- 点击面板：窗口卡片、runway、趋势图、模型明细、设置
+- 悬停 tooltip：三个窗口 + 重置倒计时 + Runway（Avg / Active）
+- 点击面板：窗口卡片、Runway 表、设置
 - 阈值通知（剩余 20% / 10%）
 - 支持 OpenCode v2（DB credential）与 v1（auth.json）
 - 自动适配 Go / Go Plus（不硬编码套餐或模型上限）
@@ -27,6 +27,7 @@
 - 多 provider（Claude / Codex / Zen）
 - Waybar 模块
 - 多账号聚合
+- 本地用量 / 模型明细 / cost / 趋势图（已移除；无法覆盖所有客户端）
 
 ---
 
@@ -35,14 +36,14 @@
 | 数据 | 来源 | 用途 |
 |---|---|---|
 | 三个窗口的已用百分比 + 重置时间 | `GET https://opencode.ai/zen/go/v1/usage`（Bearer key） | 顶栏、面板、通知 |
-| 按模型用量（消息数 / tokens / cost） | 本地 `opencode.db`（v2 `session_message` / v1 `message`） | 面板明细、趋势 |
+| 每次刷新的百分比采样 | `~/.cache/opencode-quota/samples.jsonl` | Runway 估算 |
 | key | v2：DB `credential`；v1：`auth.json` | 仅用于调用端点 |
 
 **口径规则**
 - `percent` 是**已用**百分比（0–100），剩余 = 100 − percent
-- **百分比是官方口径**（与 console 同源）；本地 cost 只做“模型用量”，**不换算配额美元**
-- API 是**账号级聚合**，不按模型；模型维度只有本地数据
-- 订阅月以 API 的 `resetsAt` 为准；设置里的 `renewOverride` 仅在 API 失败时兜底
+- **百分比是官方口径**（与 console 同源）；不读取本地 cost，也不换算配额美元
+- API 是**账号级聚合**，覆盖所有客户端，不按模型
+- 订阅月以 API 的 `monthly.resetsAt` 为准
 
 **降级**
 | 情况 | 表现 |
@@ -95,20 +96,21 @@
 ## 4. Tooltip
 
 ```
-OpenCode Go · 剩余
-5h    97%    重置 04:08（约 4h）
-7d    80%    重置 周一 08:00（约 5d）
-月    86%    重置 11-17 22:35（约 26d）
-── 本周期本地用量 ──
-deepseek-v4.1-flash   $3.85 / 1196 次
-nemotron（免费）       $0 / 24 次
-更新于 20:35
+OpenCode Go · remaining                         updated 14:36
+Period    Left   Resets in                  Runway
+Rolling    93%   2h 37m            Avg      0.2%/h → ≥ 2h 37m
+Weekly     69%   4d 17h            Avg     13.2%/day → ≥ 4d 17h
+                                 Active  387.4%/day → ~4h 16m
+Monthly    81%   27d 7h            Avg      6.2%/day → ~12d 18h
+Official API · estimates from 15h 17m of samples
 ```
 
-- 重置时间用**本地时区**；同时给相对倒计时
-- 模型明细按 cost 降序；免费模型标注 `free`
-- 降级时最后一行改为 `缓存于 20:35（API 不可用）`
-- 实现说明：百分比数字按状态着色（绿/amber/红），窗口标签保持前景色；因为顶栏共享 tooltip 是单色纯文本，这里使用自定义 QML hover card（`ui/QuotaTooltip.qml`）。
+- `Resets in` 只显示倒计时；面板显示 `Resets in <倒计时> (<绝对时间>)`
+- 百分比数字按状态着色（绿/amber/红），周期标签保持前景色
+- Runway 单元格两行：`Avg` / `Active`，速度 → 预计时长；颜色加在时长上
+- 降级时底部改为 `cached at HH:mm (API unavailable)`
+- 实现说明：顶栏共享 tooltip 是单色纯文本，这里使用自定义 QML hover card
+  （`ui/QuotaTooltip.qml`）
 
 ---
 
@@ -116,47 +118,46 @@ nemotron（免费）       $0 / 24 次
 
 ```
 ┌ OpenCode Quota                        [刷新] [设置] [×] ┐
-│  OpenCode Go（planLabel，可改）                          │
-│                                                          │
-│  5h   ◔ 97%   重置 04:08（约 4h）      runway: 约 6h     │
-│  7d   ◔ 80%   重置 周一 08:00（约 5d） runway: —         │
-│  月   ◔ 86%   重置 11-17 22:35（约 26d） runway: 约 12d  │
-│                                                          │
-│  ── 趋势（7 天 / 本周期） ──────────────────────────      │
-│  每日本地 cost 柱状 + 剩余 % 折线                         │
-│                                                          │
-│  ── 模型明细（本周期） ────────────────────────────       │
-│  模型                  消息数   输入/输出/缓存    cost   │
-│  deepseek-v4.1-flash    1196    …               $3.85   │
-│  nemotron（免费）         24    …                 $0     │
-│                                                          │
-│  数据源：官方 API · 更新于 20:35                          │
-└──────────────────────────────────────────────────────────┘
+│  OpenCode Go                          updated 14:36   │
+│                                                        │
+│  ◔ 93%  Rolling   Resets in 2h 37m (17:13)            │
+│  ◔ 69%  Weekly    Resets in 4d 17h (Mon 08:00)        │
+│  ◔ 81%  Monthly   Resets in 27d 7h (11-17 22:35)      │
+│                                                        │
+│  Runway                                                │
+│  Period      Avg                    Active             │
+│  Rolling   0.2%/h → ≥ 2h 37m                           │
+│  Weekly   13.2%/day → ≥ 4d 17h    387.4%/day → ~4h 16m │
+│  Monthly   6.2%/day → ~12d 18h                         │
+│  Avg includes idle · Active usage only                 │
+│  ≥ lasts until reset · > after reset                   │
+│  Based on official API samples · 15h 17m · 265 points  │
+│  Official usage API · account-wide, all clients        │
+└────────────────────────────────────────────────────────┘
 ```
 
 ### 5.1 窗口卡片
-- 环形或条形显示剩余 %
+- 环形显示剩余 %
 - 大号剩余 %、重置倒计时 + 绝对时间
-- **Runway**：按百分比斜率估算“还能用多久”；取 `min(runway, 距离重置)`；样本不足显示 `—`
+- 倒计时与 `Resets in` 使用同一个值，并按周期上限钳制
 
-### 5.2 趋势
-- 每日本地 cost 柱（从 DB 回填，刚装就有数据）
-- 剩余 % 折线（从插件运行后开始采样）
-- 切换：最近 7 天 / 本周期
+### 5.2 Runway 表
+- 三列：`Period | Avg | Active`；每个单元格是 `速度 → 预计时长`
+- **Avg**：当前周期内所有采样的最小二乘趋势，使用实际时间（含空闲）
+- **Active**：只统计用量上升的区间；空闲区间和超过
+  `max(15 min, 2 × 刷新间隔 + 60 s)` 的间隔忽略；至少 3 个活跃区间、30 分钟活跃时间
+- 时长：`≥ <重置倒计时>` 能撑到重置；`~<时长>` 会在重置前用完；`0m` 已空；
+  `Idle` 无消耗
+- 样本要求：≥3 点、跨度 ≥1h、最新样本足够新；否则整块隐藏
 - 采样存 `~/.cache/opencode-quota/samples.jsonl`，保留 30 天
+- 颜色只加在预计时长上；百分比颜色仍表达当前剩余
 
-### 5.3 模型明细
-- 本周期（订阅月）内，按模型聚合：消息数、input/output/reasoning/cache tokens、cost
-- 免费模型标注；按 cost 降序
-- 空数据时显示“暂无本地用量”
-
-### 5.4 设置（面板内）
+### 5.3 设置（面板内）
 与 Setup → Plugins 表单改的是同一份 `shell.json` 内联字段：
-- 显示：`barWindows`、`percentMode`、`showModelDetail`
+- 显示：`barWindows`、`percentMode`
 - 阈值：`warnRemaining`、`critRemaining`
 - 刷新：`refreshIntervalSec`
 - 通知：`notifyEnabled`、`notifyReset`
-- Renew 覆盖：`renewOverride`（ISO；空 = 用 API）
 - 计划标签：`planLabel`
 
 ---
@@ -172,8 +173,6 @@ nemotron（免费）       $0 / 24 次
 | `critRemaining` | integer | 10 | 1–99 | 严重阈值 |
 | `notifyEnabled` | boolean | true | — | 阈值通知 |
 | `notifyReset` | boolean | false | — | 重置时通知 |
-| `showModelDetail` | boolean | true | — | 面板模型明细 |
-| `renewOverride` | string | `""` | ISO 时间 | 手动 Renew |
 | `planLabel` | string | `OpenCode Go` | — | 面板标签 |
 
 设置存储：`~/.config/omarchy/shell.json` 里本 widget 的 entry（**不要**另建配置文件）。
@@ -236,7 +235,7 @@ opencode-quota/
 ## 11. 验收（摘要）
 
 1. 顶栏：worst 自动切换；20%/10% 变色；`—`/降级正确
-2. 面板：三窗口、倒计时、runway、趋势、模型表；开关正常
+2. 面板：三窗口、倒计时、Runway 表（Avg / Active）；开关正常
 3. 设置：面板与 Setup 同步；shell 重启后保留
 4. 通知：每窗口每阈值每次重置只发一次；严重用 critical
 5. 数据：与 console 的百分比一致（±1% 取整/时间差）；无 key/断网不崩溃

@@ -29,13 +29,19 @@ PopupWindow {
   readonly property var available: Model.availableNames(windows)
   readonly property bool hasWindows: available.length > 0
   readonly property string stateText: Model.stateMessage(report)
+  readonly property var samples: report && report.samples ? report.samples : []
+  readonly property bool fresh: {
+    if (samples.length === 0) return false
+    var time = new Date(samples[samples.length - 1].t).getTime()
+    if (!isFinite(time)) return false
+    var age = Math.max(0, (nowMs - time) / 1000)
+    return age <= Math.max(900, 2 * cfg.refreshIntervalSec)
+  }
   readonly property bool showRunway: {
-    if (!report || !report.runway) return false
+    if (!fresh || !report || !report.runway) return false
     var names = ["rolling", "weekly", "monthly"]
     for (var i = 0; i < names.length; i++) {
-      var entry = report.runway[names[i]]
-      if (entry && ((entry.seconds !== null && entry.seconds !== undefined)
-          || entry.reason === "flat")) return true
+      if (hasEstimate(names[i])) return true
     }
     return false
   }
@@ -88,26 +94,59 @@ PopupWindow {
       Math.max(0, Math.round((reset - nowMs) / 1000)))
   }
 
-  function runwayText(name) {
-    if (!report || !report.runway || !report.runway[name]) return ""
-    var window = root.windows[name] || ({})
-    var entry = report.runway[name]
-    var label = Model.runwayLabel(entry.seconds, resetSeconds(name, window), window.remaining, entry.reason)
-    if (label === "") return ""
-    var burn = Model.burnText(report.runway[name].ratePerHour, name)
-    return burn ? label + " \u00b7 " + burn : label
+  function windowFor(name) {
+    return root.windows[name] || ({})
   }
 
-  function runwayColor(name) {
-    var window = root.windows[name] || ({})
-    var entry = report && report.runway ? report.runway[name] : null
-    var level = Model.runwayLevel(window.remaining, entry ? entry.seconds : null,
-      resetSeconds(name, window), root.cfg.warnRemaining, root.cfg.critRemaining,
-      entry ? entry.reason : null)
+  function entryFor(name) {
+    return report && report.runway ? (report.runway[name] || ({})) : ({})
+  }
+
+  function avgLabel(name) {
+    var entry = entryFor(name)
+    var window = windowFor(name)
+    return Model.runwayLabel(entry.seconds, resetSeconds(name, window),
+      window.remaining, entry.reason)
+  }
+
+  function activeLabel(name) {
+    var entry = entryFor(name)
+    var window = windowFor(name)
+    return Model.runwayLabel(entry.activeSeconds, resetSeconds(name, window),
+      window.remaining, entry.activeReason)
+  }
+
+  function avgRateText(name) {
+    return Model.burnText(entryFor(name).ratePerHour, name)
+  }
+
+  function activeRateText(name) {
+    return Model.burnText(entryFor(name).activeRatePerHour, name)
+  }
+
+  function colorForLevel(level) {
     if (level === "crit") return critColor
     if (level === "warn") return warnColor
     if (level === "normal") return okColor
     return dim
+  }
+
+  function avgColor(name) {
+    var entry = entryFor(name)
+    return colorForLevel(Model.runwayLevel(
+      windowFor(name).remaining, entry.seconds, resetSeconds(name, windowFor(name)),
+      root.cfg.warnRemaining, root.cfg.critRemaining, entry.reason))
+  }
+
+  function activeColor(name) {
+    var entry = entryFor(name)
+    return colorForLevel(Model.runwayLevel(
+      windowFor(name).remaining, entry.activeSeconds, resetSeconds(name, windowFor(name)),
+      root.cfg.warnRemaining, root.cfg.critRemaining, entry.activeReason))
+  }
+
+  function hasEstimate(name) {
+    return avgLabel(name) !== "" || activeLabel(name) !== ""
   }
 
   readonly property string sampleSpan: {
@@ -336,15 +375,75 @@ PopupWindow {
               elide: Text.ElideRight
               textFormat: Text.PlainText
             }
-            Text {
+            Column {
               visible: root.showRunway
               width: Style.space(210)
-              text: root.runwayText(modelData)
-              color: root.runwayColor(modelData)
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              horizontalAlignment: Text.AlignRight
-              textFormat: Text.PlainText
+
+              Row {
+                width: parent.width
+                spacing: Style.space(3)
+                visible: root.avgLabel(modelData) !== ""
+
+                Text {
+                  width: Style.space(42)
+                  text: "Avg"
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  textFormat: Text.PlainText
+                }
+                Text {
+                  width: Style.space(74)
+                  text: root.avgRateText(modelData)
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  horizontalAlignment: Text.AlignRight
+                  textFormat: Text.PlainText
+                }
+                Text {
+                  width: parent.width - Style.space(42) - Style.space(74) - 2 * Style.space(3)
+                  text: "\u2192 " + root.avgLabel(modelData)
+                  color: root.avgColor(modelData)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  horizontalAlignment: Text.AlignRight
+                  textFormat: Text.PlainText
+                }
+              }
+
+              Row {
+                width: parent.width
+                spacing: Style.space(3)
+                visible: root.activeLabel(modelData) !== ""
+
+                Text {
+                  width: Style.space(42)
+                  text: "Active"
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  textFormat: Text.PlainText
+                }
+                Text {
+                  width: Style.space(74)
+                  text: root.activeRateText(modelData)
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  horizontalAlignment: Text.AlignRight
+                  textFormat: Text.PlainText
+                }
+                Text {
+                  width: parent.width - Style.space(42) - Style.space(74) - 2 * Style.space(3)
+                  text: "\u2192 " + root.activeLabel(modelData)
+                  color: root.activeColor(modelData)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  horizontalAlignment: Text.AlignRight
+                  textFormat: Text.PlainText
+                }
+              }
             }
           }
         }

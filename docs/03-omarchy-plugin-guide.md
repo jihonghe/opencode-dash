@@ -37,7 +37,7 @@
   "version": "0.1.0",
   "author": "…",
   "license": "MIT",
-  "description": "OpenCode subscription quota in the Omarchy bar: remaining percentages, reset countdowns, runway and per-model usage.",
+  "description": "OpenCode subscription quota in the Omarchy bar: remaining percentages, reset countdowns, and runway projections.",
   "kinds": ["bar-widget"],
   "entryPoints": { "barWidget": "BarWidget.qml" },
   "barWidget": {
@@ -55,8 +55,6 @@
       "critRemaining": 10,
       "notifyEnabled": true,
       "notifyReset": false,
-      "showModelDetail": true,
-      "renewOverride": "",
       "planLabel": "OpenCode Go"
     },
     "schema": [
@@ -67,9 +65,7 @@
       { "key": "critRemaining", "type": "integer", "label": "Critical below remaining %", "min": 1, "max": 99, "defaultValue": 10 },
       { "key": "notifyEnabled", "type": "boolean", "label": "Notify on thresholds", "defaultValue": true },
       { "key": "notifyReset", "type": "boolean", "label": "Notify on reset", "defaultValue": false },
-      { "key": "showModelDetail", "type": "boolean", "label": "Show per-model usage", "defaultValue": true },
-      { "key": "renewOverride", "type": "string", "label": "Manual renew time (ISO)", "defaultValue": "" },
-      { "key": "planLabel", "type": "string", "label": "Plan label", "defaultValue": "OpenCode Go" }
+      { "key": "planLabel", "type": "enum", "label": "Plan", "options": ["OpenCode Go", "OpenCode Go Plus"], "defaultValue": "OpenCode Go" }
     ]
   }
 }
@@ -169,8 +165,7 @@ BarWidget {
 结构建议：
 - 头部：标题 + 刷新 + 设置 + 关闭
 - 三个窗口卡片（`RingGauge` 或自绘进度条）
-- 趋势区（`Canvas` 或 `HistoryGraph` 思路）
-- 模型表（`ListView` / `Repeater`）
+- Runway 表（`Period / Avg / Active`）
 - 设置页（与 schema 字段同名）
 
 面板打开方式：`root.panel.open()`；Esc / 点击外部关闭。

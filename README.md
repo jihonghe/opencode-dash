@@ -20,8 +20,8 @@ any future agent.
 - Status colors: healthy green, remaining ≤ 20% amber, ≤ 10% red with `!`.
 - Only the percentage is colored; the period label and `%` stay in the
   foreground.
-- Panel: three quota periods, reset times/countdowns, and a Runway table with
-  burn rate, runway, and warn/crit ETAs.
+- Panel: three quota periods, reset times/countdowns, and a Runway table
+  (`Period · Avg · Active`) projecting how long the current rate can last.
 - Threshold notifications through `notify-send`, deduplicated per period,
   level, and reset time.
 - Settings in the panel and in Setup → Plugins edit the same `shell.json`
@@ -127,41 +127,43 @@ settings page also shows the current cycle reset countdown from the official
 ### Runway
 
 The official endpoint only returns the **current** percentages. Runway is built
-from samples the plugin records each time it refreshes:
+from samples the plugin records each time it refreshes. The table has three
+columns, `Period · Avg · Active`, and each cell shows a rate and a projected
+duration, for example `13.2%/day → ≥ 4d 17h`.
 
+- **Avg** is the least-squares trend over all samples in the current period.
+  It uses wall-clock time, so idle periods count towards the average.
+- **Active** only uses intervals in which usage increased. Idle intervals and
+  gaps longer than `max(15 min, 2 × refresh interval + 60 s)` are ignored. At
+  least 3 active intervals and 30 minutes of active time are required;
+  otherwise the cell stays blank.
 - At least **3 samples** spanning **1 hour** are required, and the latest
-  sample must be reasonably fresh. Until then, the Runway table is **not
-  displayed at all** — no placeholders.
-- `Burn`: average percentage points per hour (5h) or per day (7d / M).
-- `Runway`: time until the period is exhausted. `≥ 4h 18m` means the current
-  burn rate will last at least until the reset (it uses the same countdown as
-  `Resets in`); `~3d 8h` means it runs out before reset; `0m` means empty.
-- `Warn` / `Crit`: time until the period reaches the configured remaining
-  thresholds. `now` means it is already below; `> 4h 18m` means the threshold
-  is after the reset and will not be reached before the window ends.
+  sample must be fresh (`≤ max(15 min, 2 × refresh interval)`). Until then, the
+  Runway table is **not displayed at all** — no placeholders.
+- Duration labels: `≥ 4h 18m` means the rate lasts at least until reset (the
+  same countdown as `Resets in`); `~3d 8h` means it runs out before reset;
+  `0m` means the period is empty; `Idle` means there was no consumption.
 - The footer shows the sample basis, e.g.
   `Based on official API samples · 5h 10m · 106 points`.
-- If usage is flat or a period just reset, that period has no estimate until
-  enough new samples accumulate. The panel hides the whole table when no period
-  has a usable estimate.
-- The estimates use official readings, so they cover every client.
-- Runway colors:
-  - **Green**: remaining is healthy and the current burn lasts until reset.
-  - **Amber**: remaining is at or below the warn threshold, or the current
-    burn is projected to exhaust the period before reset.
+- Colors apply to the projected duration:
+  - **Green**: remaining is healthy and the rate lasts until reset.
+  - **Amber**: remaining is at or below the warn threshold, or the rate
+    exhausts the period before reset.
   - **Red**: remaining is at or below the critical threshold, or the period is
     empty.
 - The percentage color reflects **current remaining**; the Runway color
   reflects the **forecast**. They can differ: a green percentage with an amber
-  runway means there is still quota, but the current burn will use it before
+  runway means there is still quota, but the current rate will use it before
   the period resets.
-- If a period has no consumption at all (a flat burn rate), the table shows
-  `0.0%/h`, `≥ <reset countdown>`, and `> <reset countdown>` instead of blank
-  cells. Insufficient sample history is still hidden/blank.
+- If a period has no consumption at all (a flat rate), the Avg cell shows
+  `0.0%/h` and `≥ <reset countdown>`; Active stays blank. Insufficient sample
+  history is still hidden or blank.
 - In the tooltip, `Resets in` shows only the countdown (`2m`, `5d 2h`); the
-  panel shows `Resets in <countdown> (<absolute time>)`. The `Runway` cell in
-  the tooltip also shows the burn rate, and the footer shows the sample span.
-- The Runway table legend: `≥ lasts until reset · > after reset`.
+  panel shows `Resets in <countdown> (<absolute time>)`. The tooltip Runway
+  cell shows the same two lines (`Avg` / `Active`), and the footer shows the
+  sample span.
+- The Runway table legend: `Avg includes idle · Active usage only` and
+  `≥ lasts until reset · > after reset`.
 
 ### Data sources and privacy
 
@@ -255,8 +257,8 @@ CLI/TUI、ZCode，以及未来任何 Agent。
 - 默认显示剩余百分比，可在设置里切换为已用。
 - 状态颜色：健康绿色、剩余 ≤ 20% amber、≤ 10% 红色并带 `!`。
 - 只有百分比本身着色，周期标签和 `%` 保持前景色。
-- 面板：三个额度周期、重置时间和倒计时，以及包含 burn rate、runway 和
-  警告/严重 ETA 的 Runway 表。
+- 面板：三个额度周期、重置时间和倒计时，以及 `Period · Avg · Active` 的
+  Runway 表，按当前速度预估还能用多久。
 - 阈值通知由 `notify-send` 发送；按“周期 + 级别 + 重置时间”去重。
 - 面板设置页和 Setup → Plugins 修改同一份 `shell.json` 字段。
 - 明暗主题、top/bottom/left/right 四个方向的顶栏。
@@ -351,32 +353,35 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 
 ### Runway
 
-官方端点只返回**当前**百分比。Runway 来自插件每次刷新时记录的采样：
+官方端点只返回**当前**百分比。Runway 来自插件每次刷新时记录的采样。表格有三列
+`Period · Avg · Active`，每个单元格显示“速度 → 预计时长”，例如
+`13.2%/day → ≥ 4d 17h`。
 
-- 至少需要 **3 个样本**、跨度至少 **1 小时**，且最新样本不能太旧。在此之前，
-  Runway 表**完全不显示**——没有任何占位内容。
-- `Burn`：平均消耗速度；5h 用 `%/h`，7d / M 用 `%/day`。
-- `Runway`：额度耗尽时间。`≥ 4h 18m` 表示按当前速度至少能撑到重置（使用和
-  `Resets in` 相同的倒计时）；`~3d 8h` 表示会在重置前用完；`0m` 表示已经为空。
-- `Warn` / `Crit`：距离进入设置里剩余阈值的时间。`now` 表示已经在阈值下；
-  `> 4h 18m` 表示阈值在重置之后，重置前不会到达。
+- **Avg**：对当前周期内所有采样做最小二乘趋势。使用实际时间（wall clock），
+  空闲时间也计入平均。
+- **Active**：只统计用量上升的区间。空闲区间，以及超过
+  `max(15 min, 2 × 刷新间隔 + 60 s)` 的间隔会被忽略；至少需要 3 个活跃区间和
+  30 分钟活跃时间，否则该格留空。
+- 至少需要 **3 个样本**、跨度至少 **1 小时**，且最新样本不能太旧
+  （`≤ max(15 min, 2 × 刷新间隔)`）。在此之前，Runway 表**完全不显示**——
+  没有任何占位内容。
+- 时长标签：`≥ 4h 18m` 表示按当前速度至少能撑到重置（和 `Resets in` 使用同一个
+  倒计时）；`~3d 8h` 表示会在重置前用完；`0m` 表示已经为空；`Idle` 表示没有消耗。
 - 底部显示样本依据，例如
   `Based on official API samples · 5h 10m · 106 points`。
-- 如果用量平稳或周期刚重置，该周期暂时没有估算；所有周期都没有可用估算时，
-  整张表隐藏。
-- 估算来自官方读数，因此同样覆盖所有客户端。
-- Runway 颜色：
+- 颜色加在“预计时长”上：
   - **绿色**：剩余健康，且按当前速度能撑到重置。
   - **amber**：剩余已到/低于警告阈值，或按当前速度会在重置前耗尽。
   - **红色**：剩余已到/低于严重阈值，或周期已经为空。
 - 百分比颜色表达**当前剩余**，Runway 颜色表达**预测**。两者可以不同：绿色百分比 +
   amber runway 表示“还剩不少，但当前速度会在重置前用完”。
-- 如果某个周期完全没有消耗（burn rate 为 0），表格显示 `0.0%/h`、
-  `≥ <重置倒计时>`、`> <重置倒计时>`，而不是空白；样本历史不足时仍然隐藏/留空。
+- 如果某个周期完全没有消耗（速度为 0），Avg 格显示 `0.0%/h` 和
+  `≥ <重置倒计时>`，Active 留空；样本历史不足时仍然隐藏或留空。
 - Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板显示
-  `Resets in <倒计时> (<绝对时间>)`。Tooltip 的 `Runway` 单元格附带 burn rate，
-  底部显示采样跨度。
-- Runway 表图例：`≥ lasts until reset · > after reset`。
+  `Resets in <倒计时> (<绝对时间>)`。Tooltip 的 Runway 单元格同样显示
+  `Avg` / `Active` 两行，底部显示采样跨度。
+- Runway 表图例：`Avg includes idle · Active usage only` 和
+  `≥ lasts until reset · > after reset`。
 
 ### 数据源与隐私
 

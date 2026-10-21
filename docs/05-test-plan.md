@@ -12,14 +12,11 @@
 
 - `api-ok.json`：`rolling 2 / weekly 20 / monthly 13` + 三个 `resetsAt`
 - `api-401.json` / `api-timeout` / `api-malformed.json`
-- `db-v2.sqlite`：`session_message`，含：
-  - `opencode-go` / `deepseek-v4.1-flash` 多条
-  - 一个免费模型（cost=0）
-  - 一条非 assistant / cost=null
-  - 跨周期边界各一条
-- `db-v1.sqlite`：`message` 表（顶层 providerID）
+- `db-v2.sqlite`：`credential` 表，`integration_id='opencode-go'`
 - `auth-v1.json`：`{"opencode-go":{"type":"api","key":"test"}}`
 - `credential-v2`：value = `{"type":"api","key":"test"}`
+- `samples.jsonl`：正常增长、空闲、长间隔、周期重置四组样本
+- 缓存 `state.json`：上一次成功读数
 
 ### 1.2 用例
 
@@ -32,14 +29,14 @@
 | 5 | 超时/断网 | `state=stale`；返回缓存；`stale=true` |
 | 6 | 响应缺字段/非 JSON | `state=stale`；保留缓存 |
 | 7 | `resetsAt` 解析 | 本地时间与 `resetInSec` 正确；跨时区不偏 |
-| 8 | 周期起点 | `monthly.resetsAt - 1 月`；`renewOverride` 优先（仅 API 不可用时） |
-| 9 | 按模型聚合 | 只含 `providerID=opencode-go`；免费模型 `free=true` |
-| 10 | 按天聚合 | 日期按本地时区；cost 保留 4 位 |
-| 11 | token 为 null | 按 0 处理，不崩 |
+| 8 | `resetsAt` 钳制 | rolling ≤5h+60s、weekly ≤7d+60s、monthly ≤31d+60s |
+| 9 | 周期重置 | weekly/monthly 下降视为重置并清空该段样本；rolling 下降不清空 |
+| 10 | 百分比为 0 | Avg `flat`、`Idle` / `≥ <重置>`；Active 为 `none` |
+| 11 | 窗口不可用 | `status != ok` → 该窗口 `available=false`，不参与 worst |
 | 12 | 输出脱敏 | stdout/stderr/缓存中**不含** key；只允许长度/存在性 |
-| 13 | 采样与 runway | <3 点或 <1h → `null`；否则数值合理 |
-| 14 | 采样修剪 | 只保留 30 天 |
-| 15 | 通知去重 | 同 `窗口+级别+resetsAt` 只产生一个 alert |
+| 13 | Avg runway | <3 点或 <1h → `null`；否则数值合理 |
+| 14 | Active runway | 只看上升区间；长于 `max(15 min, 2×刷新间隔+60s)` 的间隔排除；<3 段或 <30 min → `insufficient` |
+| 15 | 采样修剪 / 通知去重 | 样本只留 30 天；同 `窗口+级别+resetsAt` 只产生一个 alert |
 
 运行方式建议：`pytest` 或 Python 内置 `unittest`；测试不需要网络。
 
@@ -64,18 +61,19 @@
 - [ ] 窄屏：文字不挤爆；必要时自动省略
 
 ### 2.3 Tooltip
-- [ ] 三个窗口 + 倒计时 + 绝对时间
-- [ ] 模型明细按 cost 降序；免费模型标注
-- [ ] 降级提示出现
+- [ ] 三个窗口 + 百分比 + 重置倒计时（不显示绝对时间）
+- [ ] Runway 两行 `Avg` / `Active`，速度 → 时长；样本不足时整列隐藏
+- [ ] 降级提示出现（cached at HH:mm）
+- [ ] `nowMs` 在显示时刷新，倒计时不使用创建时时钟
 - [ ] 鼠标移出后消失；不残留
 
 ### 2.4 面板
 - [ ] 左键打开/关闭；Esc 关闭；点外部关闭
 - [ ] 三个窗口卡片：环形/条形与百分比一致
 - [ ] 倒计时每秒/每分钟更新
-- [ ] Runway：有样本后显示；样本不足显示 `—`
-- [ ] 趋势：7 天 / 本周期切换；有数据
-- [ ] 模型明细：空/多模型/免费模型
+- [ ] Runway：`Period · Avg · Active`；样本不足（<3 点 / <1h）时整块隐藏，Active 不足时留空
+- [ ] Runway 时长颜色：绿色 / amber（阈值或重置前耗尽）/ 红色（严重或为空）
+- [ ] 图例与样本依据行完整，不溢出面板
 - [ ] 刷新按钮：立即更新（绕过缓存）
 - [ ] 降级/无 key 状态
 
@@ -83,7 +81,7 @@
 - [ ] 面板内改：阈值、刷新、barWindows、percentMode、通知
 - [ ] Setup → Plugins 改同一字段：两边同步
 - [ ] `omarchy restart shell` 后保留
-- [ ] `renewOverride`：填空用 API；填日期后生效（模拟 API 失败）
+- [ ] `planLabel`：Go / Go Plus 下拉只改显示标签
 - [ ] 非法值（阈值 0/100、间隔 10）被限制或拒绝
 
 ### 2.6 通知
@@ -98,9 +96,8 @@
 - [ ] 无 key（临时改名 credential 或用假 DB）
 - [ ] 401（用假 API 返回）
 - [ ] 断网（停代理）
-- [ ] 空数据（新 DB）
-- [ ] 跨周期：把 `resetsAt` 改成过去 → 不崩，等待新值/用 override
-- [ ] 多模型 + 免费模型
+- [ ] 空数据（无样本文本）
+- [ ] 跨周期：把 `resetsAt` 改成过去 → 不崩，等待新值
 - [ ] 长时间运行（>1h）内存不涨、不重复通知
 
 ---
@@ -125,7 +122,7 @@
 |---|---|
 | rolling / weekly / monthly | 与 console 差 ≤1%（取整/采样） |
 | monthly reset | `2026-11-17 22:35`（本地） |
-| 本地模型 | deepseek-v4.1-flash $3.85 / 1196；nemotron $0 / 24 |
+| 采样 | 最新样本在 `max(15 min, 2×刷新间隔)` 内；Runway 与手工计算一致 |
 | 无 key | `—` + 面板提示，不崩 |
 | 断网 | 保留上次读数 + 降级标记 |
 | 设置重启 | 保留 |

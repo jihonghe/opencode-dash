@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "author": "jihonghe",
   "license": "MIT",
-  "description": "OpenCode subscription quota in the Omarchy bar: remaining percentages, reset countdowns, runway and per-model usage.",
+  "description": "OpenCode subscription quota in the Omarchy bar: remaining percentages, reset countdowns, and runway projections.",
   "kinds": [
     "bar-widget"
   ],
