@@ -151,8 +151,8 @@ wall-clock estimate per period:
   sample must be fresh (`≤ max(15 min, 2 × refresh interval)`). Until then, the
   `Avg pace` cell shows `Collecting` and `Lasts` shows `—` (the official columns
   stay visible); the estimate appears automatically after the first hour.
-- `Avg pace` can also show `Idle` when the current percent is 0, or `Flat`
-  when there is no positive net trend. In both cases `Lasts` shows
+- A dash (`—`) in `Avg pace` means there is no positive net rate yet (for
+  example, the window is idle or draining). `Lasts` still shows
   `≥ <reset countdown>`.
 - Duration labels: `≥ 4h 18m` means the rate lasts at least until reset (the
   same countdown as `Resets in`); `~3d 8h` means it runs out before reset;
@@ -391,8 +391,8 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 - 至少需要 **3 个样本**、跨度至少 **1 小时**，且最新样本不能太旧
   （`≤ max(15 min, 2 × 刷新间隔)`）。在此之前，`Avg pace` 格显示 `Collecting`，
   `Lasts` 显示 `—`，官方列仍然可见；满 1 小时后自动出现估算。
-- `Avg pace` 还会显示 `Idle`（当前百分比为 0）或 `Flat`（没有正净趋势）。
-  这两种情况下 `Lasts` 显示 `≥ <重置倒计时>`。
+- `Avg pace` 显示 `—` 表示还没有正净速率（例如窗口空闲或在滑出）；
+  `Lasts` 仍会显示 `≥ <重置倒计时>`。
 - 时长标签：`≥ 4h 18m` 表示按当前速度至少能撑到重置（和 `Resets in` 使用同一个
   倒计时）；`~3d 8h` 表示会在重置前用完；`0m` 表示已经为空。
 - 底部显示样本依据，例如

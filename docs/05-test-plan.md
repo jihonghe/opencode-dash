@@ -31,7 +31,7 @@
 | 7 | `resetsAt` 解析 | 本地时间与 `resetInSec` 正确；跨时区不偏 |
 | 8 | `resetsAt` 钳制 | rolling ≤5h+60s、weekly ≤7d+60s、monthly ≤31d+60s |
 | 9 | 周期重置 | weekly/monthly 下降视为重置并清空该段样本；rolling 下降不清空 |
-| 10 | 百分比为 0 | Avg `flat`；界面 `Avg pace=Idle`、`Lasts=≥ <重置>` |
+| 10 | 百分比为 0 | Avg `flat`；界面 `Avg pace=—`、`Lasts=≥ <重置>` |
 | 11 | 窗口不可用 | `status != ok` → 该窗口 `available=false`，不参与 worst |
 | 12 | 输出脱敏 | stdout/stderr/缓存中**不含** key；只允许长度/存在性 |
 | 13 | Avg runway | <3 点或 <1h → `null`；否则数值合理 |

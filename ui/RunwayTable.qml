@@ -80,9 +80,7 @@ Column {
   function avgPaceText(name) {
     var entry = entryFor(name)
     if (entry.reason === "insufficient") return "Collecting"
-    if (entry.reason === "flat") {
-      return Number(windowFor(name).percent) === 0 ? "Idle" : "Flat"
-    }
+    if (entry.reason === "flat") return "\u2014"
     if (entry.reason === "unavailable") return ""
     return avgRateText(name)
   }
