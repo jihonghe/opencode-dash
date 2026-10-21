@@ -48,8 +48,12 @@ PopupWindow {
   visible: revealed && anchorItem !== null
 
   onShownChanged: {
-    if (shown) revealTimer.restart()
-    else {
+    if (shown) {
+      // The popup lives for the whole shell session; refresh now before the
+      // first reveal so countdowns do not use the creation-time clock.
+      nowMs = Date.now()
+      revealTimer.restart()
+    } else {
       revealTimer.stop()
       revealed = false
     }
@@ -76,18 +80,19 @@ PopupWindow {
     return foreground
   }
 
-  function resetSeconds(window) {
+  function resetSeconds(name, window) {
     if (!window || !window.resetsAt) return 0
     var reset = new Date(window.resetsAt).getTime()
     if (isNaN(reset)) return 0
-    return Math.max(0, Math.round((reset - nowMs) / 1000))
+    return Math.min(Model.resetHorizon(name),
+      Math.max(0, Math.round((reset - nowMs) / 1000)))
   }
 
   function runwayText(name) {
     if (!report || !report.runway || !report.runway[name]) return ""
     var window = root.windows[name] || ({})
     var entry = report.runway[name]
-    var label = Model.runwayLabel(entry.seconds, resetSeconds(window), window.remaining, entry.reason)
+    var label = Model.runwayLabel(entry.seconds, resetSeconds(name, window), window.remaining, entry.reason)
     if (label === "") return ""
     var burn = Model.burnText(report.runway[name].ratePerHour, name)
     return burn ? label + " \u00b7 " + burn : label
@@ -97,7 +102,7 @@ PopupWindow {
     var window = root.windows[name] || ({})
     var entry = report && report.runway ? report.runway[name] : null
     var level = Model.runwayLevel(window.remaining, entry ? entry.seconds : null,
-      resetSeconds(window), root.cfg.warnRemaining, root.cfg.critRemaining,
+      resetSeconds(name, window), root.cfg.warnRemaining, root.cfg.critRemaining,
       entry ? entry.reason : null)
     if (level === "crit") return critColor
     if (level === "warn") return warnColor
@@ -157,7 +162,12 @@ PopupWindow {
   }
 
   onImplicitHeightChanged: if (revealed) Qt.callLater(reposition)
-  onRevealedChanged: if (revealed) Qt.callLater(reposition)
+  onRevealedChanged: {
+    if (revealed) {
+      nowMs = Date.now()
+      Qt.callLater(reposition)
+    }
+  }
 
   Connections {
     target: root.bar
@@ -317,7 +327,7 @@ PopupWindow {
               width: parent.width - Style.space(56) - Style.space(48)
                 - (root.showRunway ? Style.space(210) + 3 * Style.space(10) : 2 * Style.space(10))
               text: parent.avail
-                ? Model.fmtDuration(root.resetSeconds(parent.win))
+                ? Model.fmtDuration(root.resetSeconds(modelData, parent.win))
                 : "no data"
               color: root.dim
               font.family: root.fontFamily

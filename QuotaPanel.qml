@@ -44,6 +44,8 @@ Panel {
     settingsMode = !settingsMode
   }
 
+  onReportChanged: if (opened) nowMs = Date.now()
+
   onOpenedChanged: {
     if (opened) {
       nowMs = Date.now()

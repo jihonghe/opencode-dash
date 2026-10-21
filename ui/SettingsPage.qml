@@ -20,7 +20,8 @@ Column {
     if (!monthlyWindow || !monthlyWindow.resetsAt) return -1
     var reset = new Date(monthlyWindow.resetsAt).getTime()
     if (!isFinite(reset)) return -1
-    return Math.max(0, Math.round((reset - nowMs) / 1000))
+    return Math.min(Model.resetHorizon("monthly"),
+      Math.max(0, Math.round((reset - nowMs) / 1000)))
   }
   readonly property string cycleText: {
     if (!monthlyWindow || !monthlyWindow.resetsAt || cycleResetIn < 0) {

@@ -37,7 +37,8 @@ Item {
     if (!window || !window.resetsAt) return 0
     var reset = new Date(window.resetsAt).getTime()
     if (isNaN(reset)) return 0
-    return Math.max(0, Math.round((reset - nowMs) / 1000))
+    return Math.min(Model.resetHorizon(root.name),
+      Math.max(0, Math.round((reset - nowMs) / 1000)))
   }
 
   implicitHeight: Style.space(72)

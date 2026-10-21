@@ -40,6 +40,13 @@ RUNWAY_HORIZON_SEC = {
 }
 RUNWAY_MIN_SPAN_SEC = 3600
 RUNWAY_MIN_POINTS = 3
+# Hard upper bounds for display countdowns. A rolling reset cannot be more
+# than 5h away; clamping protects against stale caches or clock anomalies.
+RESET_HORIZON_SEC = {
+    "rolling": 5 * 3600 + 60,
+    "weekly": 7 * 86400 + 60,
+    "monthly": 31 * 86400 + 60,
+}
 
 
 class ApiError(Exception):
@@ -248,7 +255,8 @@ def build_windows(raw: Dict[str, Dict[str, Any]], now: dt.datetime) -> Dict[str,
             "percent": percent,
             "remaining": remaining,
             "resetsAt": iso_z(reset_dt),
-            "resetInSec": max(0, int((reset_dt - now).total_seconds())),
+            "resetInSec": min(RESET_HORIZON_SEC[name],
+                               max(0, int((reset_dt - now).total_seconds()))),
         }
     return windows
 
@@ -274,13 +282,19 @@ def rehydrate_windows(cached: Dict[str, Any], now: dt.datetime) -> Dict[str, Dic
             reset_dt = parse_iso(window["resetsAt"])
         except Exception:
             continue
+        percent = max(0, min(100, int(window["percent"])))
+        cached_remaining = window.get("remaining")
+        remaining = max(0, min(100, int(
+            cached_remaining if cached_remaining is not None else 100 - percent
+        )))
         windows[name] = {
             "available": True,
             "status": "ok",
-            "percent": int(window["percent"]),
-            "remaining": int(window.get("remaining", 100 - int(window["percent"]))),
+            "percent": percent,
+            "remaining": remaining,
             "resetsAt": iso_z(reset_dt),
-            "resetInSec": max(0, int((reset_dt - now).total_seconds())),
+            "resetInSec": min(RESET_HORIZON_SEC[name],
+                               max(0, int((reset_dt - now).total_seconds()))),
         }
     return windows
 
@@ -543,7 +557,8 @@ def compute_alerts(
         if not resets_at:
             continue
         try:
-            reset_in = max(0, int((parse_iso(resets_at) - now).total_seconds()))
+            reset_in = min(RESET_HORIZON_SEC[name],
+                           max(0, int((parse_iso(resets_at) - now).total_seconds())))
         except Exception:
             reset_in = None
 

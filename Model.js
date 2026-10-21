@@ -57,6 +57,13 @@ function settingsWithDefaults(settings) {
   return out
 }
 
+function resetHorizon(name) {
+  if (name === "rolling") return 5 * 3600 + 60
+  if (name === "weekly") return 7 * 86400 + 60
+  if (name === "monthly") return 31 * 86400 + 60
+  return 31 * 86400 + 60
+}
+
 function planOptions() {
   return PLAN_OPTIONS.slice()
 }
@@ -374,6 +381,7 @@ if (typeof module !== "undefined" && module.exports) {
     windowLabel: windowLabel,
     periodLabel: periodLabel,
     planOptions: planOptions,
+    resetHorizon: resetHorizon,
     isAvailable: isAvailable,
     availableNames: availableNames,
     worstWindow: worstWindow,

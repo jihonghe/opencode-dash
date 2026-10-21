@@ -104,6 +104,24 @@ class ApiStateTests(Base):
         for field in ("models", "daily", "cycleStart", "localUpdatedAt"):
             self.assertNotIn(field, report)
 
+    def test_cached_reset_horizon_is_clamped(self):
+        cached = {
+            "rolling": {
+                "available": True,
+                "percent": 0,
+                "remaining": 100,
+                "resetsAt": quota.iso_z(NOW + dt.timedelta(hours=10)),
+            }
+        }
+        windows = quota.rehydrate_windows(cached, NOW)
+        self.assertEqual(windows["rolling"]["resetInSec"], 5 * 3600 + 60)
+
+    def test_reset_horizon_is_clamped(self):
+        raw = ok_raw()
+        raw["rolling"]["resetsAt"] = quota.iso_z(NOW + dt.timedelta(hours=10))
+        windows = quota.build_windows(raw, NOW)
+        self.assertEqual(windows["rolling"]["resetInSec"], 5 * 3600 + 60)
+
     def test_auth_expired(self):
         self.write_auth()
 

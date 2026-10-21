@@ -60,11 +60,12 @@ Column {
   width: parent ? parent.width : implicitWidth
   spacing: Style.space(4)
 
-  function resetSeconds(window) {
+  function resetSeconds(name, window) {
     if (!window || !window.resetsAt) return 0
     var reset = new Date(window.resetsAt).getTime()
     if (isNaN(reset)) return 0
-    return Math.max(0, Math.round((reset - nowMs) / 1000))
+    return Math.min(Model.resetHorizon(name),
+      Math.max(0, Math.round((reset - nowMs) / 1000)))
   }
 
   function rate(name) {
@@ -86,20 +87,20 @@ Column {
   function runwayFor(name) {
     var window = windows[name] || ({})
     var entry = runway[name] || ({})
-    return Model.runwayLabel(runwaySeconds(name), resetSeconds(window), window.remaining, entry.reason)
+    return Model.runwayLabel(runwaySeconds(name), resetSeconds(name, window), window.remaining, entry.reason)
   }
 
   function etaFor(name, threshold) {
     var window = windows[name] || ({})
     var entry = runway[name] || ({})
-    return Model.etaLabel(window.remaining, threshold, rate(name), resetSeconds(window), entry.reason)
+    return Model.etaLabel(window.remaining, threshold, rate(name), resetSeconds(name, window), entry.reason)
   }
 
   function runwayColor(name) {
     var window = windows[name] || ({})
     var entry = runway[name] || ({})
     var level = Model.runwayLevel(window.remaining, runwaySeconds(name),
-      resetSeconds(window), cfg.warnRemaining, cfg.critRemaining, entry.reason)
+      resetSeconds(name, window), cfg.warnRemaining, cfg.critRemaining, entry.reason)
     if (level === "crit") return critColor
     if (level === "warn") return warnColor
     if (level === "normal") return okColor

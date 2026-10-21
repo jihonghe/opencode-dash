@@ -98,6 +98,9 @@ Item {
     check("plan valid", Model.settingsWithDefaults({ planLabel: "OpenCode Go Plus" }).planLabel === "OpenCode Go Plus")
     check("plan fallback", Model.settingsWithDefaults({ planLabel: "Custom" }).planLabel === "OpenCode Go")
     check("plan options", Model.planOptions().join(",") === "OpenCode Go,OpenCode Go Plus")
+    check("reset horizon", Model.resetHorizon("rolling") === 5 * 3600 + 60
+      && Model.resetHorizon("weekly") === 7 * 86400 + 60
+      && Model.resetHorizon("monthly") === 31 * 86400 + 60)
 
     check("burn rolling", Model.burnText(2.7, "rolling") === "2.7%/h")
     check("burn weekly", Model.burnText(0.97, "weekly") === "23.3%/day")
