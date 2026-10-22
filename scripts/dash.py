@@ -21,6 +21,7 @@ import math
 import os
 import sqlite3
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -33,6 +34,15 @@ WINDOW_LABELS = {"rolling": "5h", "weekly": "7d", "monthly": "M"}
 
 CACHE_TTL_SEC = 60
 SAMPLE_RETENTION_SEC = 30 * 24 * 3600
+# Hard caps for every external or credential-bearing read. The endpoint is a
+# fixed official origin, but its response is still untrusted.
+MAX_RESPONSE_BYTES = 1024 * 1024
+MAX_AUTH_BYTES = 1024 * 1024
+MAX_STATE_BYTES = 1024 * 1024
+MAX_SAMPLES_BYTES = 8 * 1024 * 1024
+MAX_FIXTURE_BYTES = 8 * 1024 * 1024
+MAX_CREDENTIAL_CHARS = 64 * 1024
+MAX_KEY_CHARS = 4096
 RUNWAY_HORIZON_SEC = {
     "rolling": 6 * 3600,
     "weekly": 7 * 24 * 3600,
@@ -86,6 +96,18 @@ def _resolve(path: Optional[str], fallback: Path) -> Path:
     return fallback
 
 
+# --------------------------------------------------------------------- limits
+
+
+def _read_text_limited(path: Path, limit: int) -> str:
+    """Read at most `limit` bytes; raise instead of truncating."""
+    with path.open("rb") as handle:
+        raw = handle.read(limit + 1)
+    if len(raw) > limit:
+        raise OSError("file too large")
+    return raw.decode("utf-8")
+
+
 # --------------------------------------------------------------------- time
 
 
@@ -133,11 +155,11 @@ def read_key(db_path: Optional[str] = None, auth_path: Optional[str] = None) -> 
                 ).fetchone()
             finally:
                 con.close()
-            if row and row[0]:
+            if row and isinstance(row[0], str) and len(row[0]) <= MAX_CREDENTIAL_CHARS:
                 parsed = json.loads(row[0])
                 if isinstance(parsed, dict):
                     key = parsed.get("key")
-                    if isinstance(key, str) and key:
+                    if isinstance(key, str) and key and len(key) <= MAX_KEY_CHARS:
                         return key, "db"
         except Exception:
             # A missing table, a locked database, or malformed JSON all fall
@@ -147,11 +169,11 @@ def read_key(db_path: Optional[str] = None, auth_path: Optional[str] = None) -> 
     auth = _resolve(auth_path, default_auth_path())
     if auth.exists():
         try:
-            parsed = json.loads(auth.read_text(encoding="utf-8"))
+            parsed = json.loads(_read_text_limited(auth, MAX_AUTH_BYTES))
             entry = parsed.get("opencode-go") if isinstance(parsed, dict) else None
             if isinstance(entry, dict):
                 key = entry.get("key")
-                if isinstance(key, str) and key:
+                if isinstance(key, str) and key and len(key) <= MAX_KEY_CHARS:
                     return key, "auth.json"
         except Exception:
             pass
@@ -162,11 +184,25 @@ def read_key(db_path: Optional[str] = None, auth_path: Optional[str] = None) -> 
 # --------------------------------------------------------------------- api
 
 
+class RedirectRefused(urllib.error.URLError):
+    """The API tried to redirect a credential-bearing request."""
+
+
+class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise RedirectRefused("redirect refused")
+
+
+OPENER = urllib.request.build_opener(NoRedirectHandler)
+
+
 def fetch_usage(key: str, timeout: float = 15.0) -> Dict[str, Dict[str, Any]]:
     """Call the unofficial-but-official usage endpoint.
 
     Returns a normalized per-window dict. Raises ApiError on handled failures.
     urllib honors the standard https_proxy/HTTPS_PROXY environment variables.
+    Redirects are refused so the bearer token cannot follow a new origin, and
+    the body is read through a strict byte ceiling.
     """
     request = urllib.request.Request(
         API_URL,
@@ -176,12 +212,27 @@ def fetch_usage(key: str, timeout: float = 15.0) -> Dict[str, Dict[str, Any]]:
         },
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw = response.read()
+        with OPENER.open(request, timeout=timeout) as response:
+            declared = response.headers.get("Content-Length")
+            if declared is not None:
+                try:
+                    too_large = int(declared) > MAX_RESPONSE_BYTES
+                except (TypeError, ValueError):
+                    raise ApiError("malformed")
+                if too_large:
+                    raise ApiError("malformed")
+            raw = response.read(MAX_RESPONSE_BYTES + 1)
+    except ApiError:
+        raise
     except urllib.error.HTTPError as exc:
         raise ApiError("auth" if exc.code in (401, 403) else "network")
+    except RedirectRefused:
+        raise ApiError("network")
     except Exception:
         raise ApiError("network")
+
+    if len(raw) > MAX_RESPONSE_BYTES:
+        raise ApiError("malformed")
 
     try:
         payload = json.loads(raw.decode("utf-8", "replace"))
@@ -302,12 +353,33 @@ def rehydrate_windows(cached: Dict[str, Any], now: dt.datetime) -> Dict[str, Dic
 # --------------------------------------------------------------------- cache
 
 
-def _read_json(path: Path) -> Optional[Dict[str, Any]]:
+def _read_json(path: Path, limit: int = MAX_STATE_BYTES) -> Optional[Dict[str, Any]]:
     try:
-        parsed = json.loads(path.read_text(encoding="utf-8"))
+        parsed = json.loads(_read_text_limited(path, limit))
         return parsed if isinstance(parsed, dict) else None
     except Exception:
         return None
+
+
+def _private_dir(path: Path) -> None:
+    if path.is_symlink():
+        raise OSError("cache directory must not be a symlink")
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(path, 0o700)
+
+
+def _atomic_write_text(target: Path, text: str) -> None:
+    fd, temp_name = tempfile.mkstemp(prefix="." + target.name + ".", dir=str(target.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(temp_name, target)
+    except Exception:
+        try:
+            os.unlink(temp_name)
+        except OSError:
+            pass
+        raise
 
 
 def load_state(cache_dir: Path) -> Dict[str, Any]:
@@ -316,11 +388,11 @@ def load_state(cache_dir: Path) -> Dict[str, Any]:
 
 def save_state(cache_dir: Path, state: Dict[str, Any]) -> None:
     try:
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        target = cache_dir / "state.json"
-        temp = cache_dir / "state.json.tmp"
-        temp.write_text(json.dumps(state, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-        os.replace(temp, target)
+        _private_dir(cache_dir)
+        _atomic_write_text(
+            cache_dir / "state.json",
+            json.dumps(state, ensure_ascii=False, separators=(",", ":")),
+        )
     except OSError:
         # A read-only cache must not break the widget.
         pass
@@ -333,11 +405,19 @@ class CacheLock:
 
     def __enter__(self) -> "CacheLock":
         try:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
-            self.fd = os.open(str(self.cache_dir / ".lock"), os.O_CREAT | os.O_RDWR, 0o600)
+            _private_dir(self.cache_dir)
+            lock_path = self.cache_dir / ".lock"
+            flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+            self.fd = os.open(str(lock_path), flags, 0o600)
+            try:
+                os.chmod(lock_path, 0o600)
+            except OSError:
+                pass
             fcntl.flock(self.fd, fcntl.LOCK_EX)
         except OSError:
-            self.fd = None
+            if self.fd is not None:
+                os.close(self.fd)
+                self.fd = None
         return self
 
     def __exit__(self, *_args: Any) -> None:
@@ -367,7 +447,7 @@ def read_samples(cache_dir: Path) -> List[Dict[str, Any]]:
     path = _sample_file(cache_dir)
     samples: List[Dict[str, Any]] = []
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = _read_text_limited(path, MAX_SAMPLES_BYTES).splitlines()
     except OSError:
         return samples
     for line in lines:
@@ -401,17 +481,15 @@ def write_samples(cache_dir: Path, samples: Sequence[Dict[str, Any]], now: dt.da
         if (now - sample["_dt"]).total_seconds() <= SAMPLE_RETENTION_SEC
     ]
     try:
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        target = _sample_file(cache_dir)
-        temp = cache_dir / "samples.jsonl.tmp"
-        with temp.open("w", encoding="utf-8") as handle:
-            for sample in kept:
-                record = {"t": sample["t"]}
-                for name in WINDOWS:
-                    if sample.get(name) is not None:
-                        record[name] = sample[name]
-                handle.write(json.dumps(record, separators=(",", ":")) + "\n")
-        os.replace(temp, target)
+        _private_dir(cache_dir)
+        lines = []
+        for sample in kept:
+            record = {"t": sample["t"]}
+            for name in WINDOWS:
+                if sample.get(name) is not None:
+                    record[name] = sample[name]
+            lines.append(json.dumps(record, separators=(",", ":")))
+        _atomic_write_text(_sample_file(cache_dir), "".join(line + "\n" for line in lines))
     except OSError:
         pass
     return kept
@@ -749,7 +827,9 @@ def collect_report(
 def fixture_report(path: str) -> Dict[str, Any]:
     """Load a static report for UI development. Never used in production."""
     try:
-        parsed = json.loads(Path(os.path.expanduser(path)).read_text(encoding="utf-8"))
+        parsed = json.loads(
+            _read_text_limited(Path(os.path.expanduser(path)), MAX_FIXTURE_BYTES)
+        )
     except Exception as exc:
         return {"ok": False, "state": "error", "error": type(exc).__name__}
     if not isinstance(parsed, dict):

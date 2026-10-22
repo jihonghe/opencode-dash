@@ -200,8 +200,11 @@ when the overall pace would last until reset.
 - The key is kept in memory only. It is never written to a file, cache, log,
   command line, or error message. The only host that receives it is
   `opencode.ai`.
-- Cache files live in `~/.cache/opencode-dash/` and contain percentages,
-  timestamps, and API samples only.
+- The request refuses HTTP redirects and caps the response body at 1 MiB, so
+  the key cannot follow a redirect and a broken endpoint cannot grow the
+  helper without bound.
+- Cache files live in `~/.cache/opencode-dash/` (directory `0700`, files
+  `0600`) and contain percentages, timestamps, and API samples only.
 - Standard `https_proxy` / `HTTPS_PROXY` environment variables are honored;
   no proxy is configured by the plugin itself.
 - No telemetry and no other network destinations.
@@ -434,7 +437,10 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
   message、模型或 cost 数据。
 - key 只在内存中使用：不写文件、不写缓存、不写日志、不进命令行、不进错误信息。
   唯一接收 key 的地址是 `opencode.ai`。
-- 缓存位于 `~/.cache/opencode-dash/`，只包含百分比、时间和 API 采样。
+- 请求拒绝 HTTP 重定向，响应体上限 1 MiB；key 不会跟随重定向，异常端点也无法把
+  helper 的内存撑爆。
+- 缓存位于 `~/.cache/opencode-dash/`（目录 `0700`，文件 `0600`），只包含百分比、
+  时间和 API 采样。
 - 尊重标准 `https_proxy` / `HTTPS_PROXY` 环境变量；插件本身不硬编码代理。
 - 无遥测，不访问其他网络地址。
 

@@ -310,6 +310,129 @@ class AlertTests(unittest.TestCase):
         self.assertIn("rolling", state["lastResetsAt"])
 
 
+class FakeResponse:
+    def __init__(self, body=b"", headers=None):
+        self.body = body
+        self.headers = headers or {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def read(self, amount=None):
+        if amount is None:
+            return self.body
+        return self.body[:amount]
+
+
+class FakeOpener:
+    def __init__(self, response):
+        self.response = response
+        self.requests = []
+
+    def open(self, request, timeout=None):
+        self.requests.append((request, timeout))
+        return self.response
+
+
+class NetworkHardeningTests(unittest.TestCase):
+    def test_redirect_handler_refuses(self):
+        handler = dash.NoRedirectHandler()
+        with self.assertRaises(dash.RedirectRefused):
+            handler.redirect_request(None, None, 302, "Found", {}, "https://evil.example/")
+
+    def test_redirect_is_reported_as_network_error(self):
+        class RefusingOpener:
+            def open(self, request, timeout=None):
+                raise dash.RedirectRefused("redirect refused")
+
+        with mock.patch.object(dash, "OPENER", RefusingOpener()):
+            with self.assertRaises(dash.ApiError) as raised:
+                dash.fetch_usage(KEY)
+        self.assertEqual(raised.exception.kind, "network")
+
+    def test_declared_oversized_response_is_rejected(self):
+        response = FakeResponse(b"{}", {"Content-Length": str(dash.MAX_RESPONSE_BYTES + 1)})
+        with mock.patch.object(dash, "OPENER", FakeOpener(response)):
+            with self.assertRaises(dash.ApiError) as raised:
+                dash.fetch_usage(KEY)
+        self.assertEqual(raised.exception.kind, "malformed")
+
+    def test_oversized_body_is_rejected(self):
+        response = FakeResponse(b"x" * (dash.MAX_RESPONSE_BYTES + 1))
+        with mock.patch.object(dash, "OPENER", FakeOpener(response)):
+            with self.assertRaises(dash.ApiError) as raised:
+                dash.fetch_usage(KEY)
+        self.assertEqual(raised.exception.kind, "malformed")
+
+    def test_normal_response_still_parses(self):
+        body = json.dumps({
+            "usage": {
+                "rolling": {"status": "ok", "percent": 2, "resetsAt": ROLLING_RESET},
+                "weekly": {"status": "ok", "percent": 20, "resetsAt": WEEKLY_RESET},
+                "monthly": {"status": "ok", "percent": 13, "resetsAt": MONTHLY_RESET},
+            }
+        }).encode("utf-8")
+        response = FakeResponse(body, {"Content-Length": str(len(body))})
+        with mock.patch.object(dash, "OPENER", FakeOpener(response)):
+            raw = dash.fetch_usage(KEY)
+        self.assertEqual(raw["rolling"]["percent"], 2)
+        self.assertEqual(raw["monthly"]["resetsAt"], MONTHLY_RESET)
+
+
+class CachePermissionTests(unittest.TestCase):
+    def test_state_and_samples_are_owner_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache"
+            dash.save_state(cache, {"windows": {}})
+            dash.write_samples(
+                cache,
+                [{"t": dash.iso_z(NOW), "_dt": NOW, "rolling": 1}],
+                NOW,
+            )
+            self.assertEqual(cache.stat().st_mode & 0o777, 0o700)
+            self.assertEqual((cache / "state.json").stat().st_mode & 0o777, 0o600)
+            self.assertEqual((cache / "samples.jsonl").stat().st_mode & 0o777, 0o600)
+
+    def test_existing_wider_permissions_are_tightened(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache"
+            cache.mkdir(mode=0o755)
+            target = cache / "state.json"
+            target.write_text("{}", encoding="utf-8")
+            os.chmod(cache, 0o755)
+            os.chmod(target, 0o644)
+            dash.save_state(cache, {"windows": {}})
+            self.assertEqual(cache.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+
+    def test_symlinked_cache_dir_is_not_used(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real = root / "real"
+            real.mkdir()
+            link = root / "cache"
+            link.symlink_to(real, target_is_directory=True)
+            dash.save_state(link, {"windows": {}})
+            self.assertEqual(list(real.iterdir()), [])
+
+
+class CredentialBoundsTests(Base):
+    def test_oversized_auth_json_is_ignored(self):
+        self.auth.write_text("x" * (dash.MAX_AUTH_BYTES + 1), encoding="utf-8")
+        key, source = dash.read_key(str(self.db), str(self.auth))
+        self.assertIsNone(key)
+        self.assertEqual(source, "none")
+
+    def test_oversized_key_is_ignored(self):
+        self.write_auth("x" * (dash.MAX_KEY_CHARS + 1))
+        key, source = dash.read_key(str(self.db), str(self.auth))
+        self.assertIsNone(key)
+        self.assertEqual(source, "none")
+
+
 class SecurityTests(Base):
     def test_key_never_appears_in_output_or_cache(self):
         self.write_auth()
