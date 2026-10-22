@@ -29,11 +29,12 @@ Item {
 
   Component.onCompleted: {
     var report = sampleReport()
+    var now = new Date("2026-10-20T12:00:00Z").getTime()
 
-    check("worst", Model.barText(report, {}) === "Weekly 80%")
-    check("all", Model.barText(report, { barWindows: "all" }) === "Rolling 98% \u00b7 Weekly 80% \u00b7 Monthly 86%")
-    check("month", Model.barText(report, { barWindows: "month" }) === "Monthly 86%")
-    check("used", Model.barText(report, { barWindows: "month", percentMode: "used" }) === "Monthly 14%")
+    check("worst", Model.barText(report, {}, now) === "Weekly\n80% (5d 12h)")
+    check("all", Model.barText(report, { barWindows: "all" }, now) === "Rolling 98% \u00b7 Weekly 80% \u00b7 Monthly 86%")
+    check("month", Model.barText(report, { barWindows: "month" }, now) === "Monthly\n86% (28d 2h)")
+    check("used", Model.barText(report, { barWindows: "month", percentMode: "used" }, now) === "Monthly\n14% (28d 2h)")
     check("worst switches", Model.worstWindow({
       rolling: { available: true, percent: 10, remaining: 90 },
       weekly: { available: true, percent: 95, remaining: 5 },
@@ -47,32 +48,52 @@ Item {
     check("bar segment label uncolored", segments[0].tone === "none")
     check("bar segment percentage colored", segments[1].tone === "normal" && segments[1].text === "98%")
 
-    var warnSegments = Model.barSegments({
+    var warnSingle = Model.barSingle({
       state: "ok", windows: {
-        rolling: { available: true, percent: 85, remaining: 15 },
-        weekly: { available: true, percent: 20, remaining: 80 },
-        monthly: { available: true, percent: 14, remaining: 86 }
+        rolling: { available: true, percent: 85, remaining: 15, resetsAt: "2026-10-20T16:00:00Z" },
+        weekly: { available: true, percent: 20, remaining: 80, resetsAt: "2026-10-26T00:00:00Z" },
+        monthly: { available: true, percent: 14, remaining: 86, resetsAt: "2026-11-17T14:35:30Z" }
       }
-    }, { barWindows: "worst" })
-    check("bar segment warn", warnSegments[1].text === "15%" && warnSegments[1].tone === "warn")
+    }, { barWindows: "worst" }, now)
+    check("single warn", warnSingle.value === "15%" && warnSingle.tone === "warn")
+    check("single label", warnSingle.label === "Rolling")
+    check("single reset", warnSingle.reset === "(4h)")
+
+    var monthSingle = Model.barSingle(report, { barWindows: "month" }, now)
+    check("single month", monthSingle.label === "Monthly" && monthSingle.value === "86%"
+      && monthSingle.reset === "(28d 2h)")
+
+    var noReset = Model.barSingle({
+      state: "ok", windows: {
+        rolling: { available: true, percent: 10, remaining: 90 },
+        weekly: { available: false },
+        monthly: { available: false }
+      }
+    }, {}, now)
+    check("single no reset", noReset.value === "90%" && noReset.reset === "")
+
+    var noDataSingle = Model.barSingle(null, {}, now)
+    check("single no data", noDataSingle.label === "\u2014" && noDataSingle.value === "")
 
     var critical = sampleReport()
     critical.windows.monthly.percent = 91
     critical.windows.monthly.remaining = 9
-    check("critical mark", Model.barText(critical, {}) === "Monthly 9%!")
-    check("critical all mark", Model.barText(critical, { barWindows: "all" }).indexOf("Monthly 9%!") !== -1)
+    check("critical mark", Model.barText(critical, {}, now) === "Monthly\n9%! (28d 2h)")
+    check("critical all mark", Model.barText(critical, { barWindows: "all" }, now).indexOf("Monthly 9%!") !== -1)
+    var critSingle = Model.barSingle(critical, {}, now)
+    check("single crit", critSingle.value === "9%!" && critSingle.tone === "crit")
 
     var unavailable = sampleReport()
     unavailable.windows.weekly.available = false
-    check("unavailable skipped", Model.barText(unavailable, {}) === "Monthly 86%")
-    check("month unavailable", Model.barText(unavailable, { barWindows: "month" }) === "Monthly 86%")
+    check("unavailable skipped", Model.barText(unavailable, {}, now) === "Monthly\n86% (28d 2h)")
+    check("month unavailable", Model.barText(unavailable, { barWindows: "month" }, now) === "Monthly\n86% (28d 2h)")
 
-    check("no data", Model.barText(null, {}) === "\u2014")
-    check("no key", Model.barText({ state: "no-key", windows: {} }, {}) === "\u2014")
-    check("auth expired", Model.barText({ state: "auth-expired", windows: {} }, {}) === "\u2014")
+    check("no data", Model.barText(null, {}, now) === "\u2014")
+    check("no key", Model.barText({ state: "no-key", windows: {} }, {}, now) === "\u2014")
+    check("auth expired", Model.barText({ state: "auth-expired", windows: {} }, {}, now) === "\u2014")
     check("stale shows cached", Model.barText({
       state: "stale", stale: true, windows: report.windows
-    }, {}) === "Weekly 80%")
+    }, {}, now) === "Weekly\n80% (5d 12h)")
 
     var vertical = Model.verticalParts(report, {})
     check("vertical label", vertical.label === "7d")
@@ -84,6 +105,13 @@ Item {
     check("duration hours long", Model.fmtDuration(90000) === "25h")
     check("duration days", Model.fmtDuration(187200) === "2d 4h")
     check("duration null", Model.fmtDuration(null) === "\u2014")
+    check("reset seconds", Model.resetSeconds("rolling", report.windows.rolling, now) === 14923)
+    check("reset text", Model.resetText("weekly", report.windows.weekly, now) === "(5d 12h)")
+    check("reset missing", Model.resetText("weekly", { available: true }, now) === "")
+    check("reset malformed", Model.resetSeconds("weekly", { resetsAt: "nope" }, now) === null)
+    check("reset past", Model.resetText("rolling", { resetsAt: "2026-10-20T11:00:00Z" }, now) === "(<1m)")
+    check("reset clamp", Model.resetSeconds("rolling", { resetsAt: "2026-10-30T12:00:00Z" }, now)
+      === Model.resetHorizon("rolling"))
     check("reset rolling", Model.fmtReset("rolling", "2026-10-20T16:08:43Z") === "16:08")
     check("reset weekly", Model.fmtReset("weekly", "2026-10-26T00:00:00Z") === "Mon 00:00")
     check("reset monthly", Model.fmtReset("monthly", "2026-11-17T14:35:30Z") === "11-17 14:35")
