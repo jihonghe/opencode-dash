@@ -129,30 +129,38 @@ function criticalMark(window, settings) {
   return Number(window.remaining) <= settings.critRemaining ? "!" : ""
 }
 
-function barText(report, settings) {
-  var cfg = settingsWithDefaults(settings)
-  if (isNoData(report)) return "\u2014"
-  var names = availableNames(report.windows)
-  if (!names.length) return "\u2014"
-
-  if (cfg.barWindows === "all") {
-    var parts = []
-    for (var i = 0; i < names.length; i++) {
-      var name = names[i]
-      parts.push(periodLabel(name) + " " + percentText(report.windows[name], cfg.percentMode)
-        + "%" + criticalMark(report.windows[name], cfg))
-    }
-    return parts.join(" \u00b7 ")
-  }
-
-  if (cfg.barWindows === "month" && !isAvailable(report.windows.monthly)) return "\u2014"
-  var target = cfg.barWindows === "month" ? "monthly" : worstWindow(report.windows)
-  if (!target) return "\u2014"
-  var window = report.windows[target]
-  return periodLabel(target) + " " + percentText(window, cfg.percentMode) + "%"
-    + criticalMark(window, cfg)
+function resetSeconds(name, window, nowMs) {
+  if (!window || !window.resetsAt) return null
+  var reset = new Date(window.resetsAt).getTime()
+  if (!isFinite(reset)) return null
+  var now = Number(nowMs)
+  if (!isFinite(now)) now = Date.now()
+  return Math.min(resetHorizon(name),
+    Math.max(0, Math.round((reset - now) / 1000)))
 }
 
+function resetText(name, window, nowMs) {
+  var seconds = resetSeconds(name, window, nowMs)
+  if (seconds === null) return ""
+  return "(" + fmtDuration(seconds) + ")"
+}
+
+function barText(report, settings, nowMs) {
+  var cfg = settingsWithDefaults(settings)
+  if (cfg.barWindows === "all") {
+    var segments = barSegments(report, settings)
+    var text = ""
+    for (var i = 0; i < segments.length; i++) text += segments[i].text
+    return text
+  }
+
+  var single = barSingle(report, settings, nowMs)
+  if (!single.value) return single.label
+  return single.label + "\n" + single.value + (single.reset ? " " + single.reset : "")
+}
+
+// Flat one-row segments: used by the "all" bar layout. The stacked
+// worst/month layout uses barSingle() so the label can sit on its own line.
 function barSegments(report, settings) {
   var cfg = settingsWithDefaults(settings)
   function noData() { return [{ text: "\u2014", tone: "none" }] }
@@ -183,6 +191,28 @@ function barSegments(report, settings) {
   var target = cfg.barWindows === "month" ? "monthly" : worstWindow(report.windows)
   if (!target) return noData()
   return windowSegments(target)
+}
+
+// Single-window readout for the horizontal worst/month layout: the period
+// name is a separate line above the value, and the reset countdown sits beside
+// the value in parentheses.
+function barSingle(report, settings, nowMs) {
+  var cfg = settingsWithDefaults(settings)
+  var empty = { label: "\u2014", value: "", tone: "none", reset: "" }
+  if (isNoData(report)) return empty
+  var names = availableNames(report.windows)
+  if (!names.length) return empty
+
+  if (cfg.barWindows === "month" && !isAvailable(report.windows.monthly)) return empty
+  var target = cfg.barWindows === "month" ? "monthly" : worstWindow(report.windows)
+  if (!target) return empty
+  var window = report.windows[target]
+  return {
+    label: periodLabel(target),
+    value: percentText(window, cfg.percentMode) + "%" + criticalMark(window, cfg),
+    tone: windowLevel(window, cfg),
+    reset: resetText(target, window, nowMs)
+  }
 }
 
 function verticalParts(report, settings) {
@@ -390,8 +420,11 @@ if (typeof module !== "undefined" && module.exports) {
     percentText: percentText,
     barText: barText,
     barSegments: barSegments,
+    barSingle: barSingle,
     verticalParts: verticalParts,
     statusLevel: statusLevel,
+    resetSeconds: resetSeconds,
+    resetText: resetText,
     fmtDuration: fmtDuration,
     burnText: burnText,
     runwayLabel: runwayLabel,

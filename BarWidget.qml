@@ -11,6 +11,7 @@ BarWidget {
   id: root
 
   property var report: null
+  property real nowMs: Date.now()
   property var localSettings: Model.settingsWithDefaults({})
   property var pendingSettings: ({})
   property bool fetching: false
@@ -31,12 +32,18 @@ BarWidget {
     return Model.savedBarSettings(config, moduleName, locateSelf())
   }
 
+  readonly property bool singleMode: localSettings.barWindows !== "all"
   readonly property var horizontalSegments: Model.barSegments(report, localSettings)
+  readonly property var singleReadout: Model.barSingle(report, localSettings, nowMs)
   readonly property var verticalParts: Model.verticalParts(report, localSettings)
   readonly property real displayOpacity: report && report.stale ? 0.55 : 1.0
   readonly property color okColor: toneColor("normal")
   readonly property color warnColor: toneColor("warn")
   readonly property color critColor: toneColor("crit")
+  readonly property color dimColor: {
+    var fg = bar ? (bar.barForeground || bar.foreground || Commons.Color.foreground) : Commons.Color.foreground
+    return Qt.rgba(fg.r, fg.g, fg.b, 0.65)
+  }
 
   function toneColor(tone) {
     if (!bar) return Commons.Color.foreground
@@ -227,6 +234,7 @@ BarWidget {
     try {
       var parsed = JSON.parse(text)
       if (!parsed || typeof parsed !== "object") throw new Error("invalid report")
+      nowMs = Date.now()
       report = parsed
       lastError = ""
       fireAlerts(parsed.alerts || [])
@@ -319,24 +327,73 @@ BarWidget {
     onTriggered: root.refresh(false)
   }
 
+  // Keep the clock warm even while another bar layout is shown, so switching
+  // to worst/month does not render a stale countdown.
+  Timer {
+    interval: 30000
+    running: root.ready
+    repeat: true
+    onTriggered: root.nowMs = Date.now()
+  }
+
   // ------------------------------------------------------------- display
 
-  Row {
+  Column {
     id: horizontal
     visible: !root.vertical
     anchors.centerIn: parent
     spacing: 0
     opacity: root.displayOpacity
 
-    Repeater {
-      model: root.horizontalSegments
+    Row {
+      visible: !root.singleMode
+      spacing: 0
 
-      delegate: Text {
-        required property var modelData
-        text: modelData.text
-        color: root.toneColor(modelData.tone)
+      Repeater {
+        model: root.horizontalSegments
+
+        delegate: Text {
+          required property var modelData
+          text: modelData.text
+          color: root.toneColor(modelData.tone)
+          font.family: root.bar ? root.bar.fontFamily : Style.font.family
+          font.pixelSize: Style.font.body
+          textFormat: Text.PlainText
+        }
+      }
+    }
+
+    Text {
+      visible: root.singleMode
+      text: root.singleReadout.label
+      color: root.singleReadout.value !== "" ? root.dimColor : root.toneColor("none")
+      font.family: root.bar ? root.bar.fontFamily : Style.font.family
+      font.pixelSize: root.singleReadout.value !== "" ? Style.font.caption : Style.font.body
+      lineHeight: 0.95
+      textFormat: Text.PlainText
+    }
+
+    Row {
+      visible: root.singleMode && root.singleReadout.value !== ""
+      spacing: Style.space(4)
+
+      Text {
+        text: root.singleReadout.value
+        color: root.toneColor(root.singleReadout.tone)
         font.family: root.bar ? root.bar.fontFamily : Style.font.family
-        font.pixelSize: Style.font.body
+        font.pixelSize: Style.font.bodySmall
+        font.bold: true
+        lineHeight: 0.95
+        textFormat: Text.PlainText
+      }
+
+      Text {
+        visible: text !== ""
+        text: root.singleReadout.reset
+        color: root.toneColor(root.singleReadout.tone)
+        font.family: root.bar ? root.bar.fontFamily : Style.font.family
+        font.pixelSize: Style.font.bodySmall
+        lineHeight: 0.95
         textFormat: Text.PlainText
       }
     }

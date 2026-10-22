@@ -18,8 +18,8 @@ any future agent.
 - Bar display: `worst` (least remaining), `all` periods, or `month` only.
 - Remaining percentage by default; switch to used in the settings.
 - Status colors: healthy green, remaining ≤ 20% amber, ≤ 10% red with `!`.
-- Only the percentage is colored; the period label and `%` stay in the
-  foreground.
+  In single-period modes the percentage and reset countdown share the status
+  color; the period label stays dim.
 - Panel: three quota periods, reset times/countdowns, and a Runway table
   (`Period · Avg pace · Lasts`) projecting how long the current rate can last.
 - Threshold notifications through `notify-send`, deduplicated per period,
@@ -130,8 +130,11 @@ fields.
 | `planLabel` | enum | `OpenCode Go` | `OpenCode Go` or `OpenCode Go Plus`; display label only |
 
 The bar uses the official period names: `Rolling`, `Weekly`, and `Monthly`.
-In a vertical bar it uses the short aliases `5h`, `7d`, and `M`, with the
-worst period on two lines (`7d` / `79%`), to stay readable.
+In `worst` and `month` modes a horizontal bar shows the period name on its own
+line, with the percentage and the reset countdown in parentheses below it
+(`Weekly` / `80% (5d 12h)`). `all` mode stays on one line. In a vertical bar it
+uses the short aliases `5h`, `7d`, and `M`, with the worst period on two lines
+(`7d` / `79%`), to stay readable.
 
 OpenCode subscription plans are **OpenCode Go** and **OpenCode Go Plus**.
 **Zen is not a subscription tier**; it is OpenCode's pay-as-you-go console/API
@@ -279,8 +282,8 @@ CLI/TUI、ZCode，以及未来任何 Agent。
 
 - 顶栏显示：`worst`（剩余最少）、`all`（三个周期）、`month`（只看订阅月）。
 - 默认显示剩余百分比，可在设置里切换为已用。
-- 状态颜色：健康绿色、剩余 ≤ 20% amber、≤ 10% 红色并带 `!`。
-- 只有百分比本身着色，周期标签和 `%` 保持前景色。
+- 状态颜色：健康绿色、剩余 ≤ 20% amber、≤ 10% 红色并带 `!`。单周期模式下百分比和
+  重置倒计时共用状态色，周期标签用暗色。
 - 面板：三个额度周期、重置时间和倒计时，以及 `Period · Avg pace · Lasts` 的
   Runway 表，按当前速度预估还能用多久。
 - 阈值通知由 `notify-send` 发送；按“周期 + 级别 + 重置时间”去重。
@@ -381,7 +384,9 @@ omarchy plugin remove jihonghe.opencode-dash
 | `notifyReset` | boolean | `false` | 周期重置时通知 |
 | `planLabel` | enum | `OpenCode Go` | `OpenCode Go` 或 `OpenCode Go Plus`；仅用于显示 |
 
-顶栏使用官方周期名：`Rolling` / `Weekly` / `Monthly`。垂直顶栏为节省宽度使用短标签
+顶栏使用官方周期名：`Rolling` / `Weekly` / `Monthly`。在 `worst` / `month` 模式下，
+横向顶栏把周期名单独放在一行，下面显示百分比和括号内的重置倒计时，例如
+`Weekly` / `80% (5d 12h)`；`all` 模式保持单行。垂直顶栏为节省宽度使用短标签
 `5h` / `7d` / `M`，并分两行显示最紧周期（`7d` / `79%`）。
 
 OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 不是订阅套餐**，
