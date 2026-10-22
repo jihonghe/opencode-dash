@@ -1,10 +1,20 @@
 # OpenCode Dash
 
-[English](#english) · [中文](#中文)
+[UI](#ui) · [English](#english) · [中文](#中文)
 
-| Dark theme | Light theme |
-|---|---|
-| ![Dark theme](preview.png) | ![Light theme](preview-light.png) |
+## UI
+
+**Bar · 顶栏** — always visible; `worst` and `month` show the period and reset countdown on two lines. / 始终可见；`worst` / `month` 分两行显示周期和重置倒计时。
+![Bar](preview-bar.png)
+
+**Tooltip · 悬停提示** — hover for all periods, reset countdowns, and runway. / 悬停查看三个周期、重置倒计时和 runway。
+![Tooltip](preview-tooltip.png)
+
+**Panel · 面板** — click for quota cards, reset times, and runway. / 点击查看额度卡片、重置时间和 runway。
+![Panel](preview.png)
+
+**Settings · 设置** — gear in the panel or right-click the widget. / 面板齿轮或右键打开。
+![Settings](preview-settings.png)
 
 ## English
 
@@ -16,10 +26,12 @@ any future agent.
 ### Features
 
 - Bar display: `worst` (least remaining), `all` periods, or `month` only.
+- In `worst` / `month` modes the bar shows the period on its own line and the
+  percentage + reset countdown below it; `all` mode stays on one line.
 - Remaining percentage by default; switch to used in the settings.
-- Status colors: healthy green, remaining ≤ 20% amber, ≤ 10% red with `!`.
-  In single-period modes the percentage and reset countdown share the status
-  color; the period label stays dim.
+- Status colors (defaults): healthy green, remaining ≤ 20% amber, ≤ 10% red
+  with `!`. In single-period modes the percentage and reset countdown share the
+  status color; the period label stays dim.
 - Panel: three quota periods, reset times/countdowns, and a Runway table
   (`Period · Avg pace · Lasts`) projecting how long the current rate can last.
 - Threshold notifications through `notify-send`, deduplicated per period,
@@ -34,8 +46,8 @@ any future agent.
 
 | Layer | Interaction | What it shows | Purpose |
 |---|---|---|---|
-| Bar | always visible | the tightest period | notice at a glance |
-| Tooltip | hover | three periods + one forecast | a 3-second check |
+| Bar | always visible | the selected bar view (`worst`, `all`, or `month`) with reset countdowns | notice at a glance |
+| Tooltip | hover | three periods, reset countdowns, and runway estimates | a 3-second check |
 | Panel | click | the same facts + context + controls | inspect and adjust |
 
 The tooltip is a read-only preview of the same `report` the panel uses, so the
@@ -121,7 +133,7 @@ fields.
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `refreshIntervalSec` | integer | `300` | Refresh interval, 60–3600 seconds |
-| `barWindows` | enum | `worst` | `worst`, `all`, or `month` |
+| `barWindows` | enum | `worst` | `worst`, `all`, or `month`; horizontal bar only (vertical always shows the worst period) |
 | `percentMode` | enum | `remaining` | `remaining` or `used` |
 | `warnRemaining` | integer | `20` | Warn below this remaining percentage |
 | `critRemaining` | integer | `10` | Critical below this remaining percentage |
@@ -134,7 +146,8 @@ In `worst` and `month` modes a horizontal bar shows the period name on its own
 line, with the percentage and the reset countdown in parentheses below it
 (`Weekly` / `80% (5d 12h)`). `all` mode stays on one line. In a vertical bar it
 uses the short aliases `5h`, `7d`, and `M`, with the worst period on two lines
-(`7d` / `79%`), to stay readable.
+(`7d` / `79%`), to stay readable; `barWindows` only affects the horizontal
+layout.
 
 OpenCode subscription plans are **OpenCode Go** and **OpenCode Go Plus**.
 **Zen is not a subscription tier**; it is OpenCode's pay-as-you-go console/API
@@ -164,8 +177,9 @@ wall-clock estimate per period:
 - Duration labels: `≥ 4h 18m` means the rate lasts at least until reset (the
   same countdown as `Resets in`); `~3d 8h` means it runs out before reset;
   `0m` means the period is empty.
-- The footer shows the sample basis, e.g.
-  `Based on official API samples · 5h 10m · 106 points`.
+- The panel's Runway footer shows the sample basis, e.g.
+  `Based on official API samples · 5h 10m · 106 points`; the tooltip footer
+  shows the same span as `estimates from ... of samples`.
 - Colors apply to the projected duration:
   - **Green**: remaining is healthy and the rate lasts until reset.
   - **Amber**: remaining is at or below the warn threshold, or the rate
@@ -207,7 +221,8 @@ when the overall pace would last until reset.
   the key cannot follow a redirect and a broken endpoint cannot grow the
   helper without bound.
 - Cache files live in `~/.cache/opencode-dash/` (directory `0700`, files
-  `0600`) and contain percentages, timestamps, and API samples only.
+  `0600`) and contain percentages, timestamps, API samples, and local alert
+  bookkeeping only.
 - Standard `https_proxy` / `HTTPS_PROXY` environment variables are honored;
   no proxy is configured by the plugin itself.
 - No telemetry and no other network destinations.
@@ -227,16 +242,17 @@ cache. Notifications are sent with `notify-send`; no systemd unit is installed.
   `opencode auth login` and choose OpenCode Go, then `omarchy restart shell`.
   An expired credential is fixed the same way.
 - **Values look stale**: the API is unreachable; the last successful reading
-  is shown dimmed. The panel footer says when it was cached.
+  is shown dimmed. The panel shows a stale notice and the last update time; the
+  tooltip adds a `cached at` line.
 - **`Avg pace` says `Collecting`**: there are samples, but not yet 3 points
   over 1 hour (or the period just reset). Official values stay visible; the
-  estimate appears automatically. If the whole Runway table is hidden, the
-  latest sample is stale; check the network/API.
+  estimate appears automatically. The Runway table is hidden when the latest
+  sample is stale or when no period has a numeric rate and none is collecting.
 - **No notifications**: check `notify-send`, your notification daemon, and
   Do Not Disturb. Alerts are deduplicated per period/level/reset.
 - **Check the data layer manually**:
-  `python3 scripts/dash.py --json --force | python3 -m json.tool`
-- **Logs**: `journalctl --user -b --no-pager | grep -i opencode-dash`
+  `python3 scripts/dash.py --json --force --debug | python3 -m json.tool`
+- **QML warnings**: `journalctl --user -b --no-pager | grep -i opencode-dash`
 - After installing or updating, run `omarchy restart shell` once.
 
 ### Development
@@ -259,8 +275,9 @@ For UI state tests, add `"debugFixture": "/path/to/tests/fixtures/report-stale.j
 to the widget's `shell.json` entry. The script then returns that fixture
 instead of real data. Available fixtures: `report-stale.json`,
 `report-no-key.json`, `report-auth-expired.json`, `report-not-ready.json`
-(insufficient samples: `Collecting` / `—`), and `report-idle.json` (flat
-period: both derived cells `—`).
+(insufficient samples: `Collecting` / `—`), `report-idle.json` (flat period:
+both derived cells `—`), and `report-preview.json` (deterministic 100/64/78
+values with weekly/monthly runway for README screenshots).
 Remove the setting when done.
 
 ### Credits and license
@@ -284,9 +301,10 @@ CLI/TUI、ZCode，以及未来任何 Agent。
 ### 功能
 
 - 顶栏显示：`worst`（剩余最少）、`all`（三个周期）、`month`（只看订阅月）。
+- `worst` / `month` 模式下，顶栏分两行显示周期名和“百分比 + 重置倒计时”；`all` 模式保持单行。
 - 默认显示剩余百分比，可在设置里切换为已用。
-- 状态颜色：健康绿色、剩余 ≤ 20% amber、≤ 10% 红色并带 `!`。单周期模式下百分比和
-  重置倒计时共用状态色，周期标签用暗色。
+- 状态颜色（默认）：健康绿色、剩余 ≤ 20% 琥珀色、≤ 10% 红色并带 `!`。单周期模式下
+  百分比和重置倒计时共用状态色，周期标签用暗色。
 - 面板：三个额度周期、重置时间和倒计时，以及 `Period · Avg pace · Lasts` 的
   Runway 表，按当前速度预估还能用多久。
 - 阈值通知由 `notify-send` 发送；按“周期 + 级别 + 重置时间”去重。
@@ -298,8 +316,8 @@ CLI/TUI、ZCode，以及未来任何 Agent。
 
 | 层级 | 交互 | 显示内容 | 目的 |
 |---|---|---|---|
-| 顶栏 | 始终可见 | 最紧周期 | 余光确认 |
-| Tooltip | 悬停 | 三个周期 + 一个预测 | 3 秒快速查看 |
+| 顶栏 | 始终可见 | 当前顶栏视图（`worst` / `all` / `month`）和重置倒计时 | 余光确认 |
+| Tooltip | 悬停 | 三个周期、重置倒计时和 runway 估算 | 3 秒快速查看 |
 | 面板 | 点击 | 同样的事实 + 上下文 + 操作 | 查看并调整 |
 
 Tooltip 是面板同一份 `report` 的只读预览，数字不会分叉。新的详情和操作优先放面板；
@@ -379,7 +397,7 @@ omarchy plugin remove jihonghe.opencode-dash
 | 键 | 类型 | 默认 | 说明 |
 |---|---|---|---|
 | `refreshIntervalSec` | integer | `300` | 刷新间隔，60–3600 秒 |
-| `barWindows` | enum | `worst` | `worst` / `all` / `month` |
+| `barWindows` | enum | `worst` | `worst` / `all` / `month`；仅横向顶栏（垂直顶栏始终显示最紧周期） |
 | `percentMode` | enum | `remaining` | `remaining` / `used` |
 | `warnRemaining` | integer | `20` | 剩余低于此百分比时警告 |
 | `critRemaining` | integer | `10` | 剩余低于此百分比时严重警告 |
@@ -390,7 +408,7 @@ omarchy plugin remove jihonghe.opencode-dash
 顶栏使用官方周期名：`Rolling` / `Weekly` / `Monthly`。在 `worst` / `month` 模式下，
 横向顶栏把周期名单独放在一行，下面显示百分比和括号内的重置倒计时，例如
 `Weekly` / `80% (5d 12h)`；`all` 模式保持单行。垂直顶栏为节省宽度使用短标签
-`5h` / `7d` / `M`，并分两行显示最紧周期（`7d` / `79%`）。
+`5h` / `7d` / `M`，并分两行显示最紧周期（`7d` / `79%`）；`barWindows` 只影响横向布局。
 
 OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 不是订阅套餐**，
 它是 OpenCode 的按量计费 console/API 平台。API 不返回当前套餐类型，所以设置里的下拉框
@@ -408,18 +426,18 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
   （`≤ max(15 min, 2 × 刷新间隔)`）。在此之前，`Avg pace` 格显示 `Collecting`，
   `Lasts` 显示 `—`，官方列仍然可见；满 1 小时后自动出现估算。
 - 没有正速率的周期，`Avg pace` 和 `Lasts` 都显示 `—`（空闲、flat、滑出或不可用）。
-  不会出现“有速率才有时长”之外的组合。所有周期都没有正速率、也没有 `Collecting` 时，
-  整张 Runway 表隐藏。
+  没有正速率时不会显示时长；所有周期都没有正速率、也没有 `Collecting` 时，整张
+  Runway 表隐藏。
 - 时长标签：`≥ 4h 18m` 表示按当前速度至少能撑到重置（和 `Resets in` 使用同一个
   倒计时）；`~3d 8h` 表示会在重置前用完；`0m` 表示已经为空。
-- 底部显示样本依据，例如
+- 面板 Runway 底部显示样本依据，例如
   `Based on official API samples · 5h 10m · 106 points`。
 - 颜色加在“预计时长”上：
   - **绿色**：剩余健康，且按当前速度能撑到重置。
-  - **amber**：剩余已到/低于警告阈值，或按当前速度会在重置前耗尽。
+  - **琥珀色**：剩余已到/低于警告阈值，或按当前速度会在重置前耗尽。
   - **红色**：剩余已到/低于严重阈值，或周期已经为空。
 - 百分比颜色表达**当前剩余**，Runway 颜色表达**预测**。两者可以不同：绿色百分比 +
-  amber runway 表示“还剩不少，但当前速度会在重置前用完”。
+  琥珀色 runway 表示“还剩不少，但当前速度会在重置前用完”。
 - 完全空闲或 flat 的周期，两个衍生列都显示 `—`，不再显示 `0.0%/h`；
   官方百分比和重置时间仍然保留。
 - Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板显示
@@ -445,7 +463,7 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 - 请求拒绝 HTTP 重定向，响应体上限 1 MiB；key 不会跟随重定向，异常端点也无法把
   helper 的内存撑爆。
 - 缓存位于 `~/.cache/opencode-dash/`（目录 `0700`，文件 `0600`），只包含百分比、
-  时间和 API 采样。
+  时间、API 采样和本地告警去重状态。
 - 尊重标准 `https_proxy` / `HTTPS_PROXY` 环境变量；插件本身不硬编码代理。
 - 无遥测，不访问其他网络地址。
 
@@ -461,16 +479,16 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 - **顶栏显示 `—`**：先运行 `opencode auth list`；如果没有凭据，运行
   `opencode auth login` 并选择 OpenCode Go，然后 `omarchy restart shell`。
   登录过期也用同样方式重新登录。
-- **数值看起来是旧的**：API 不可达，显示上次成功读数并变暗；面板底部会标注缓存
-  时间。
+- **数值看起来是旧的**：API 不可达，显示上次成功读数并变暗；面板会显示 stale 提示和
+  最后更新时间，tooltip 额外显示 `cached at`。
 - **`Avg pace` 显示 `Collecting`**：已有采样，但还没满足 3 个点、跨度 1 小时
-  （或该周期刚重置）。官方数值仍然可见，估算会自动出现。整张 Runway 表隐藏
-  表示最新样本已过期，检查网络/API。
+  （或该周期刚重置）。官方数值仍然可见，估算会自动出现。最新样本过期，或没有任何
+  周期可估算/正在采集时，整张 Runway 表隐藏。
 - **没有通知**：检查 `notify-send`、通知守护进程和勿扰模式。通知按周期/级别/
   重置时间去重。
 - **手动检查数据层**：
-  `python3 scripts/dash.py --json --force | python3 -m json.tool`
-- **日志**：`journalctl --user -b --no-pager | grep -i opencode-dash`
+  `python3 scripts/dash.py --json --force --debug | python3 -m json.tool`
+- **QML 警告**：`journalctl --user -b --no-pager | grep -i opencode-dash`
 - 安装或更新后执行一次 `omarchy restart shell`。
 
 ### 开发
@@ -493,7 +511,8 @@ omarchy plugin validate .
 `"debugFixture": "/path/to/tests/fixtures/report-stale.json"`，脚本会直接返回该
 fixture。可用 fixture：`report-stale.json`、`report-no-key.json`、
 `report-auth-expired.json`、`report-not-ready.json`（样本不足：`Collecting` / `—`）、
-`report-idle.json`（flat 周期：两列都是 `—`）。用完请删除。
+`report-idle.json`（flat 周期：两列都是 `—`）、`report-preview.json`（README 截图用的
+确定性数据：100/64/78，带 weekly/monthly runway）。用完请删除。
 
 ### 致谢与许可
 

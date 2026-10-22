@@ -43,6 +43,8 @@ Available fixtures:
   and `Lasts` shows `—`.
 - `report-idle.json` — one period is flat; both derived columns show `—` for
   that period, while the other periods show numeric estimates.
+- `report-preview.json` — deterministic 100/64/78 values with weekly/monthly
+  runway estimates; used for README screenshots.
 
 Non-stale fixtures are shifted to the current time when loaded, so their
 samples and reset countdowns stay usable. Reload the shell config or restart
