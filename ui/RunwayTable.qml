@@ -11,6 +11,7 @@ Column {
   property var settings: ({})
   property real nowMs: Date.now()
   property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property color warnColor: "#e8a33d"
   property color critColor: Commons.Color.urgent
   property color okColor: "#9ece6a"
@@ -20,6 +21,8 @@ Column {
   readonly property var windows: report && report.windows ? report.windows : ({})
   readonly property var runway: report && report.runway ? report.runway : ({})
   readonly property var samples: report && report.samples ? report.samples : []
+  readonly property var outlook: report && report.cycleOutlook ? report.cycleOutlook : ({})
+  readonly property string outlookText: Model.cycleUnusedText(outlook)
   readonly property color dim: Qt.darker(foreground, 1.45)
   readonly property real columnGap: Style.space(10)
   readonly property real periodWidth: Style.space(64)
@@ -196,6 +199,50 @@ Column {
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
         horizontalAlignment: Text.AlignRight
+        textFormat: Text.PlainText
+      }
+    }
+  }
+
+  Rectangle {
+    visible: root.outlookText !== ""
+    width: parent.width
+    height: visible ? outlookRow.implicitHeight + Style.space(12) : 0
+    radius: Style.cornerRadius
+    color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.045)
+
+    Flow {
+      id: outlookRow
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      anchors.leftMargin: Style.space(8)
+      anchors.rightMargin: Style.space(8)
+      spacing: Style.space(5)
+
+      Text {
+        text: "Cycle outlook"
+        color: root.accent
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        font.bold: true
+        textFormat: Text.PlainText
+      }
+
+      Text {
+        text: root.outlookText
+        color: root.foreground
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        font.bold: true
+        textFormat: Text.PlainText
+      }
+
+      Text {
+        text: "at reset"
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
         textFormat: Text.PlainText
       }
     }

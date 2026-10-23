@@ -270,6 +270,100 @@ class RunwayTests(unittest.TestCase):
         return Path(tmp.name)
 
 
+class CycleOutlookTests(unittest.TestCase):
+    def outlook(self, *, remaining=62, reset_in=12 * 86400, rate=2.0 / 24,
+                span=19 * 86400, reason="ok", available=True):
+        windows = {
+            "monthly": {
+                "available": available,
+                "remaining": remaining,
+                "resetInSec": reset_in,
+            }
+        }
+        runway = {
+            "monthly": {
+                "seconds": reset_in,
+                "ratePerHour": rate,
+                "reason": reason,
+                "spanSec": span,
+            }
+        }
+        return dash.compute_cycle_outlook(windows, runway)
+
+    def test_projects_unused_monthly_budget(self):
+        result = self.outlook()
+        self.assertTrue(result["available"])
+        self.assertEqual(result["unusedPercent"], 38)
+        self.assertEqual(result["resetInSec"], 12 * 86400)
+        self.assertEqual(result["spanSec"], 19 * 86400)
+
+    def test_waits_for_second_half(self):
+        result = self.outlook(reset_in=20 * 86400)
+        self.assertFalse(result["available"])
+        self.assertEqual(result["reason"], "early")
+
+    def test_needs_enough_observed_span(self):
+        result = self.outlook(span=5 * 86400)
+        self.assertFalse(result["available"])
+        self.assertEqual(result["reason"], "insufficient")
+
+    def test_hides_when_budget_will_be_used(self):
+        result = self.outlook(remaining=10)
+        self.assertFalse(result["available"])
+        self.assertEqual(result["reason"], "full")
+        self.assertLess(result["unusedPercent"], dash.CYCLE_OUTLOOK_MIN_UNUSED_PERCENT)
+
+    def test_monthly_unavailable(self):
+        result = self.outlook(available=False)
+        self.assertFalse(result["available"])
+        self.assertEqual(result["reason"], "unavailable")
+
+    def test_flat_rate_is_not_projected(self):
+        result = self.outlook(reason="flat", rate=0.0)
+        self.assertFalse(result["available"])
+        self.assertEqual(result["reason"], "flat")
+
+    def test_missing_reset_is_not_projected(self):
+        result = self.outlook(reset_in=0)
+        self.assertFalse(result["available"])
+        self.assertEqual(result["reason"], "no-reset")
+
+    def test_weekly_is_never_used(self):
+        windows = {"weekly": {"available": True, "remaining": 64, "resetInSec": 2 * 86400}}
+        runway = {"weekly": {"seconds": 2 * 86400, "ratePerHour": 0.3, "reason": "ok", "spanSec": 5 * 86400}}
+        result = dash.compute_cycle_outlook(windows, runway)
+        self.assertFalse(result["available"])
+        self.assertEqual(result["reason"], "unavailable")
+
+
+class CycleOutlookIntegrationTests(Base):
+    def test_report_includes_monthly_outlook(self):
+        self.write_auth()
+        samples = []
+        for days, value in ((19, 0), (10, 19), (0, 38)):
+            when = NOW - dt.timedelta(days=days)
+            samples.append({
+                "t": dash.iso_z(when),
+                "_dt": when,
+                "rolling": None,
+                "weekly": None,
+                "monthly": value,
+            })
+        dash.write_samples(self.cache, samples, NOW)
+
+        def fetch(_key):
+            raw = ok_raw()
+            raw["monthly"]["percent"] = 38
+            raw["monthly"]["resetsAt"] = dash.iso_z(NOW + dt.timedelta(days=12))
+            return raw
+
+        report = self.collect(fetch=fetch)
+        outlook = report["cycleOutlook"]
+        self.assertTrue(outlook["available"])
+        self.assertEqual(outlook["unusedPercent"], 38)
+        self.assertEqual(outlook["resetInSec"], 12 * 86400)
+
+
 class AlertTests(unittest.TestCase):
     def windows(self, rolling=18, weekly=5, monthly=50):
         return {

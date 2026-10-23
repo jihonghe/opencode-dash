@@ -20,6 +20,7 @@ PopupWindow {
   property color okColor: "#9ece6a"
   property color warnColor: "#e8a33d"
   property color critColor: Commons.Color.urgent
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property real nowMs: Date.now()
 
@@ -30,6 +31,8 @@ PopupWindow {
   readonly property bool hasWindows: available.length > 0
   readonly property string stateText: Model.stateMessage(report)
   readonly property var samples: report && report.samples ? report.samples : []
+  readonly property var cycleOutlook: report && report.cycleOutlook ? report.cycleOutlook : ({})
+  readonly property string outlookText: Model.cycleUnusedText(cycleOutlook)
   readonly property real periodWidth: Style.space(56)
   readonly property real percentWidth: Style.space(48)
   readonly property real resetWidth: Style.space(60)
@@ -411,6 +414,45 @@ PopupWindow {
               textFormat: Text.PlainText
             }
           }
+        }
+      }
+
+      Rectangle {
+        visible: root.showRunway && root.outlookText !== ""
+        width: parent.width
+        height: 1
+        color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.12)
+      }
+
+      Flow {
+        visible: root.showRunway && root.outlookText !== ""
+        width: parent.width
+        spacing: Style.space(4)
+
+        Text {
+          text: "Cycle outlook"
+          color: root.accent
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          font.bold: true
+          textFormat: Text.PlainText
+        }
+
+        Text {
+          text: root.outlookText
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          font.bold: true
+          textFormat: Text.PlainText
+        }
+
+        Text {
+          text: "at reset"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          textFormat: Text.PlainText
         }
       }
 

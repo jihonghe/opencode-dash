@@ -50,6 +50,11 @@ RUNWAY_HORIZON_SEC = {
 }
 RUNWAY_MIN_SPAN_SEC = 3600
 RUNWAY_MIN_POINTS = 3
+# The monthly limit is the paid budget. The 5-hour (20%) and weekly (50%)
+# limits are ceilings derived from it, so only unused monthly quota is waste.
+CYCLE_LENGTH_SEC = 31 * 24 * 3600
+CYCLE_OUTLOOK_MIN_SPAN_SEC = int(CYCLE_LENGTH_SEC * 0.25)
+CYCLE_OUTLOOK_MIN_UNUSED_PERCENT = 5
 # Hard upper bounds for display countdowns. A rolling reset cannot be more
 # than 5h away; clamping protects against stale caches or clock anomalies.
 RESET_HORIZON_SEC = {
@@ -540,12 +545,12 @@ def compute_runway(
     for name in WINDOWS:
         window = windows.get(name) or {}
         if not window.get("available") or window.get("remaining") is None:
-            result[name] = {"seconds": None, "ratePerHour": None, "reason": "unavailable"}
+            result[name] = {"seconds": None, "ratePerHour": None, "reason": "unavailable", "spanSec": 0}
             continue
 
         percent = window.get("percent")
         if percent is not None and int(percent) == 0:
-            result[name] = {"seconds": None, "ratePerHour": 0.0, "reason": "flat"}
+            result[name] = {"seconds": None, "ratePerHour": 0.0, "reason": "flat", "spanSec": 0}
             continue
 
         horizon = RUNWAY_HORIZON_SEC[name]
@@ -567,7 +572,7 @@ def compute_runway(
         reset_in = window.get("resetInSec")
         span = (points[-1][0] - points[0][0]).total_seconds() if len(points) >= 2 else 0
         if len(points) < RUNWAY_MIN_POINTS or span < RUNWAY_MIN_SPAN_SEC:
-            result[name] = {"seconds": None, "ratePerHour": None, "reason": "insufficient"}
+            result[name] = {"seconds": None, "ratePerHour": None, "reason": "insufficient", "spanSec": int(span)}
             continue
 
         origin = points[0][0]
@@ -577,12 +582,12 @@ def compute_runway(
         mean_y = sum(ys) / len(ys)
         denominator = sum((value - mean_x) ** 2 for value in xs)
         if denominator <= 0:
-            result[name] = {"seconds": None, "ratePerHour": None, "reason": "insufficient"}
+            result[name] = {"seconds": None, "ratePerHour": None, "reason": "insufficient", "spanSec": int(span)}
             continue
 
         slope = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)) / denominator
         if slope <= 0:
-            result[name] = {"seconds": None, "ratePerHour": 0.0, "reason": "flat"}
+            result[name] = {"seconds": None, "ratePerHour": 0.0, "reason": "flat", "spanSec": int(span)}
             continue
 
         seconds = 0.0 if remaining <= 0 else remaining / slope
@@ -590,11 +595,55 @@ def compute_runway(
             seconds = min(seconds, float(reset_in))
         result[name] = {
             "seconds": int(max(0, round(seconds))),
-            "ratePerHour": round(slope * 3600, 2),
+            # Keep enough precision for the monthly cycle projection; the UI
+            # still formats display rates to one decimal.
+            "ratePerHour": round(slope * 3600, 4),
             "reason": "ok",
+            "spanSec": int(span),
         }
 
     return result
+
+
+def compute_cycle_outlook(
+    windows: Dict[str, Dict[str, Any]],
+    runway: Dict[str, Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Project the unused share of the monthly budget at the cycle reset.
+
+    Monthly only: the 5-hour and weekly limits are ceilings derived from the
+    monthly limit, so unused headroom there is not waste. The projection waits
+    for the second half of the cycle and for enough observed samples, and it
+    stays hidden when the budget is projected to be fully used.
+    """
+    monthly = windows.get("monthly") or {}
+    entry = runway.get("monthly") or {}
+    if not monthly.get("available") or monthly.get("remaining") is None:
+        return {"available": False, "reason": "unavailable"}
+    if entry.get("reason") != "ok":
+        return {"available": False, "reason": entry.get("reason") or "insufficient"}
+    try:
+        reset_in = int(monthly.get("resetInSec"))
+    except (TypeError, ValueError):
+        return {"available": False, "reason": "no-reset"}
+    if reset_in <= 0:
+        return {"available": False, "reason": "no-reset"}
+    if reset_in > CYCLE_LENGTH_SEC // 2:
+        return {"available": False, "reason": "early"}
+    span = int(entry.get("spanSec") or 0)
+    if span < CYCLE_OUTLOOK_MIN_SPAN_SEC:
+        return {"available": False, "reason": "insufficient"}
+    rate = float(entry.get("ratePerHour") or 0)
+    projected = float(monthly["remaining"]) - rate * reset_in / 3600.0
+    unused = max(0, min(100, int(round(projected))))
+    if unused < CYCLE_OUTLOOK_MIN_UNUSED_PERCENT:
+        return {"available": False, "reason": "full", "unusedPercent": unused}
+    return {
+        "available": True,
+        "unusedPercent": unused,
+        "resetInSec": reset_in,
+        "spanSec": span,
+    }
 
 
 # --------------------------------------------------------------------- alerts
@@ -740,6 +789,7 @@ def collect_report(
         "planLabel": plan_label,
         "windows": {},
         "runway": {name: {"seconds": None} for name in WINDOWS},
+        "cycleOutlook": {"available": False, "reason": "unavailable"},
         "samples": [],
         "alerts": [],
     }
@@ -762,6 +812,7 @@ def collect_report(
         report["ok"] = not stale
         report["updatedAt"] = local_iso(updated_ts)
         report["runway"] = compute_runway(samples, windows, now)
+        report["cycleOutlook"] = compute_cycle_outlook(windows, report["runway"])
         report["samples"] = _report_samples(samples)
         return report
 
@@ -819,6 +870,7 @@ def collect_report(
         report["ok"] = True
         report["windows"] = windows
         report["runway"] = runway
+        report["cycleOutlook"] = compute_cycle_outlook(windows, runway)
         report["samples"] = _report_samples(samples)
         report["alerts"] = alerts
         return report
@@ -834,6 +886,9 @@ def fixture_report(path: str) -> Dict[str, Any]:
         return {"ok": False, "state": "error", "error": type(exc).__name__}
     if not isinstance(parsed, dict):
         return {"ok": False, "state": "error", "error": "invalid-fixture"}
+    outlook = parsed.get("cycleOutlook")
+    if not isinstance(outlook, dict):
+        outlook = {"available": False, "reason": "unavailable"}
     report = {
         "ok": parsed.get("ok", parsed.get("state") == "ok"),
         "state": parsed.get("state", "ok"),
@@ -842,6 +897,7 @@ def fixture_report(path: str) -> Dict[str, Any]:
         "planLabel": parsed.get("planLabel", "OpenCode Go"),
         "windows": parsed.get("windows", {}),
         "runway": parsed.get("runway", {name: {"seconds": None} for name in WINDOWS}),
+        "cycleOutlook": outlook,
         "samples": parsed.get("samples", []),
         "alerts": [],
     }

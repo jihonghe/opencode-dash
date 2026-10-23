@@ -238,6 +238,7 @@ Panel {
               settings: root.cfg
               nowMs: root.nowMs
               foreground: root.foreground
+              accent: root.accent
               warnColor: root.warnColor
               critColor: root.critColor
               okColor: root.okColor

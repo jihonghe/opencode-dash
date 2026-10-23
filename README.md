@@ -34,6 +34,9 @@ any future agent.
   status color; the period label stays dim.
 - Panel: three quota periods, reset times/countdowns, and a Runway table
   (`Period · Avg pace · Lasts`) projecting how long the current rate can last.
+- Monthly cycle outlook: when the current pace projects at least 5% of the
+  monthly budget will be unused at reset, the panel and tooltip show it.
+  Weekly and 5-hour headroom are ceilings, not waste, so they are not projected.
 - Threshold notifications through `notify-send`, deduplicated per period,
   level, and reset time.
 - Settings in the panel and in Setup → Plugins edit the same `shell.json`
@@ -194,9 +197,32 @@ wall-clock estimate per period:
   `0.0%/h`. The official percentage and reset time remain visible above.
 - In the tooltip, `Resets in` shows only the countdown (`2m`, `5d 2h`); the
   panel shows `Resets in <countdown> (<absolute time>)`. The tooltip shows the
-  same `Avg pace` and `Lasts` columns, and the footer shows the sample span.
+  same `Avg pace` and `Lasts` columns, the cycle outlook line when available,
+  and the footer shows the sample span.
 - The Runway table legend: `Avg includes idle · ≥ lasts until reset ·
   ~ runs out earlier`.
+
+#### Cycle outlook (monthly only)
+
+OpenCode Go's limits are monthly dollar amounts: the 5-hour limit is 20% of the
+monthly limit, the weekly limit is 50%, and the monthly limit is 100%
+([official docs](https://opencode.ai/docs/go)). The 5-hour and weekly windows
+are therefore ceilings that spread the monthly budget, not independent
+allowances: even a user who consumes the full monthly budget leaves roughly
+half of every weekly cap unused. Reporting that as "waste" would be misleading,
+so only the monthly budget gets a cycle outlook.
+
+When the current pace projects at least **5%** of the monthly budget will be
+unused at reset, one line appears in the panel's Runway section and in the
+tooltip:
+
+`Cycle outlook · ~38% unused at reset`
+
+The projection appears only in the second half of the cycle, after at least 25%
+of the cycle has been sampled. If the projection is below 5%, or the budget is
+projected to run out, the line is hidden; the Runway table's `Lasts` column
+already covers the run-out case. The line is informational, not a warning, so
+it uses the accent color rather than the warn/critical colors.
 
 There is intentionally no "active-only" estimate. It divides usage by the time
 spent in short active intervals, then extrapolates that rate across wall-clock
@@ -231,7 +257,8 @@ when the overall pace would last until reset.
 
 `BarWidget.qml` periodically runs `python3 scripts/dash.py --json`. The
 script reads the key, calls the usage endpoint, appends a sample, computes
-runway, and returns one JSON document. QML only renders it. A 60-second cache
+runway and the monthly cycle outlook, and returns one JSON document. QML only
+renders it. A 60-second cache
 and a file lock keep multiple bar instances from duplicating API calls; manual
 refresh (`middle click`, the panel button, or `r` in the panel) bypasses the
 cache. Notifications are sent with `notify-send`; no systemd unit is installed.
@@ -276,8 +303,9 @@ to the widget's `shell.json` entry. The script then returns that fixture
 instead of real data. Available fixtures: `report-stale.json`,
 `report-no-key.json`, `report-auth-expired.json`, `report-not-ready.json`
 (insufficient samples: `Collecting` / `—`), `report-idle.json` (flat period:
-both derived cells `—`), and `report-preview.json` (deterministic 100/64/78
-values with weekly/monthly runway for README screenshots).
+both derived cells `—`), `report-preview.json` (deterministic 100/64/78 values
+with weekly/monthly runway for README screenshots), and
+`report-cycle-outlook.json` (monthly cycle outlook: `~38% unused`).
 Remove the setting when done.
 
 ### Credits and license
@@ -307,6 +335,8 @@ CLI/TUI、ZCode，以及未来任何 Agent。
   百分比和重置倒计时共用状态色，周期标签用暗色。
 - 面板：三个额度周期、重置时间和倒计时，以及 `Period · Avg pace · Lasts` 的
   Runway 表，按当前速度预估还能用多久。
+- 月度 **Cycle outlook**：按当前速度预测本周期重置时还会剩多少月度额度；
+  周和 5 小时是上限，不算浪费。达到条件时在面板和 tooltip 各显示一行。
 - 阈值通知由 `notify-send` 发送；按“周期 + 级别 + 重置时间”去重。
 - 面板设置页和 Setup → Plugins 修改同一份 `shell.json` 字段。
 - 明暗主题、top/bottom/left/right 四个方向的顶栏。
@@ -442,8 +472,25 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
   官方百分比和重置时间仍然保留。
 - Tooltip 的 `Resets in` 列只显示倒计时（`2m`、`5d 2h`）；面板显示
   `Resets in <倒计时> (<绝对时间>)`。Tooltip 使用同样的
-  `Avg pace` / `Lasts` 两列，底部显示采样跨度。
+  `Avg pace` / `Lasts` 两列，有 cycle outlook 时多显示一行，底部显示采样跨度。
 - Runway 表图例：`Avg includes idle · ≥ lasts until reset · ~ runs out earlier`。
+
+#### Cycle outlook（仅 Monthly）
+
+OpenCode Go 的额度按月度金额计算：5 小时上限是月额度的 20%，周上限是 50%，
+月额度是 100%（[官方文档](https://opencode.ai/docs/go)）。所以 5 小时和周是
+用来摊平月度预算的“上限”，不是独立额度：即使一个用户把月额度用满，平均每周
+也只会用掉周上限的一半左右，把周额度的剩余说成“浪费”会误导。因此只对月度预算
+做 cycle outlook。
+
+当按当前速度预测重置时至少还剩 **5%** 的月度额度时，面板的 Runway 区和
+tooltip 会各多一行：
+
+`Cycle outlook · ~38% unused at reset`
+
+这个预测只在周期后半程、且已采样至少 25% 的周期时出现。预测剩余低于 5%，
+或预测会在重置前用完时，这一行隐藏；后者已经由 Runway 表的 `Lasts` 列
+（`~Xd`）覆盖。它是信息提示而不是警告，所以用强调色，不用 warn/crit 颜色。
 
 这里刻意**不再提供 Active-only 估算**：它把用量除以短暂活跃区间的时间，再把该速度
 外推到整个实际时间轴。百分比是整数、采样间隔只有几分钟，单次 `+1%` 跳变就会主导结果，
@@ -470,7 +517,8 @@ OpenCode 的订阅套餐只有 **OpenCode Go** 和 **OpenCode Go Plus**。**Zen 
 ### 工作原理
 
 `BarWidget.qml` 定时运行 `python3 scripts/dash.py --json`。脚本读取 key、调用额度
-端点、写入采样、计算 runway，最后输出一份 JSON；QML 只负责渲染。60 秒缓存和文件
+端点、写入采样、计算 runway 和月度 cycle outlook，最后输出一份 JSON；QML 只负责
+渲染。60 秒缓存和文件
 锁避免多显示器重复请求；手动刷新（中键、面板按钮或面板内按 `r`）会绕过缓存。
 通知直接调用 `notify-send`，不安装 systemd 单元。
 
@@ -512,7 +560,8 @@ omarchy plugin validate .
 fixture。可用 fixture：`report-stale.json`、`report-no-key.json`、
 `report-auth-expired.json`、`report-not-ready.json`（样本不足：`Collecting` / `—`）、
 `report-idle.json`（flat 周期：两列都是 `—`）、`report-preview.json`（README 截图用的
-确定性数据：100/64/78，带 weekly/monthly runway）。用完请删除。
+确定性数据：100/64/78，带 weekly/monthly runway）、`report-cycle-outlook.json`
+（月度 cycle outlook：`~38% unused`）。用完请删除。
 
 ### 致谢与许可
 

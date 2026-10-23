@@ -296,6 +296,14 @@ function burnText(ratePerHour, windowName) {
   return (rate * 24).toFixed(1) + "%/day"
 }
 
+// Monthly-only projection of the paid budget left at the cycle reset.
+function cycleUnusedText(outlook) {
+  if (!outlook || !outlook.available) return ""
+  var percent = Number(outlook.unusedPercent)
+  if (!isFinite(percent)) return ""
+  return "~" + Math.round(percent) + "% unused"
+}
+
 function runwayLabel(seconds, resetInSec, remaining, reason) {
   var rem = remaining === null || remaining === undefined ? null : Number(remaining)
   if (rem !== null && isFinite(rem) && rem <= 0) return "0m"
@@ -427,6 +435,7 @@ if (typeof module !== "undefined" && module.exports) {
     resetText: resetText,
     fmtDuration: fmtDuration,
     burnText: burnText,
+    cycleUnusedText: cycleUnusedText,
     runwayLabel: runwayLabel,
     etaLabel: etaLabel,
     runwayLevel: runwayLevel,

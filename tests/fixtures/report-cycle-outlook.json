@@ -1,0 +1,88 @@
+{
+  "state": "ok",
+  "stale": false,
+  "updatedAt": "2026-10-23T06:00:00Z",
+  "planLabel": "OpenCode Go",
+  "windows": {
+    "rolling": {
+      "available": true,
+      "percent": 88,
+      "remaining": 12,
+      "resetsAt": "2026-10-23T06:42:00Z",
+      "resetInSec": 2520
+    },
+    "weekly": {
+      "available": true,
+      "percent": 36,
+      "remaining": 64,
+      "resetsAt": "2026-10-25T06:00:00Z",
+      "resetInSec": 172800
+    },
+    "monthly": {
+      "available": true,
+      "percent": 38,
+      "remaining": 62,
+      "resetsAt": "2026-11-04T06:00:00Z",
+      "resetInSec": 1036800
+    }
+  },
+  "runway": {
+    "rolling": {
+      "seconds": 2100,
+      "ratePerHour": 20.5,
+      "reason": "ok",
+      "spanSec": 15480
+    },
+    "weekly": {
+      "seconds": 172800,
+      "ratePerHour": 0.3,
+      "reason": "ok",
+      "spanSec": 432000
+    },
+    "monthly": {
+      "seconds": 1036800,
+      "ratePerHour": 0.0833,
+      "reason": "ok",
+      "spanSec": 1641600
+    }
+  },
+  "cycleOutlook": {
+    "available": true,
+    "unusedPercent": 38,
+    "resetInSec": 1036800,
+    "spanSec": 1641600
+  },
+  "samples": [
+    {
+      "t": "2026-10-04T06:00:00Z",
+      "rolling": 0,
+      "weekly": 0,
+      "monthly": 0
+    },
+    {
+      "t": "2026-10-09T06:00:00Z",
+      "rolling": 2,
+      "weekly": 10,
+      "monthly": 9
+    },
+    {
+      "t": "2026-10-14T06:00:00Z",
+      "rolling": 5,
+      "weekly": 20,
+      "monthly": 19
+    },
+    {
+      "t": "2026-10-19T06:00:00Z",
+      "rolling": 8,
+      "weekly": 30,
+      "monthly": 28
+    },
+    {
+      "t": "2026-10-23T06:00:00Z",
+      "rolling": 12,
+      "weekly": 36,
+      "monthly": 38
+    }
+  ],
+  "alerts": []
+}
